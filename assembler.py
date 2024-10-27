@@ -2,50 +2,26 @@ import parse6510
 import mnemonics6510
 import re
 import argparse
+import loggy
 
 # Notes:
 # https://c64os.com/post/6502instructions
-
-
-# Label Definitions
-labels = {}
-
-# Assembled Output
-assembly_output = bytearray()
 
 # Modes
 MODE_PRESCAN = 0
 MODE_ASSEMBLE = 1
 
-# Logging modes
-LOG_LEVEL = 1
-LOG_ERROR = 0
-LOG_WARN = 1
-LOG_INFO = 2
-LOG_DIAGNOSTIC = 3
+def dump_assembly( address, machine_code, assembly ):
 
-def log( level, msg ):
-    ind = [ "[!] ", "[?] ", "[+] ", "[@] " ]
-    if ( level <= LOG_LEVEL ):
-        print ( ind[level] + msg )
+    tab = max(30 - len(machine_code),0)
 
-# Parse the command line
-def parse_command_line():
-    # Create the parser
-    parser = argparse.ArgumentParser(description="Assembler")
+    str = "$" + '{:04x}'.format(address).upper() + "  "
+    str = str + machine_code.upper()
+    str = str + " " * tab
+
+    str = str + assembly + " "
+    loggy.log( loggy.LOG_INFO, str )
     
-    # Add a filename argument
-    parser.add_argument('filename', help='Input assembly file')
-    parser.add_argument('-base',    help='Base address e.g. 0xC000')
-    parser.add_argument('-output',  help='Filename of assembled output')
-    parser.add_argument('-log',     help='Log Level, Diagnostic = 3, Info = 2, Warnings = 1, Errors = 0')
-
-    # Parse the arguments
-    args = parser.parse_args()
-
-    # Return the filename
-    return args
-
 
 # Calculate offset for relative addressing mode
 def calculate_relative_offset(current_address, target_address):
@@ -63,41 +39,15 @@ def calculate_relative_offset(current_address, target_address):
 
     return offset
 
-# generate an output filename
-def generate_output_filename( filename ):
-    matches = re.findall("\..*$", filename)
-    if ( len(matches)>0 ):
-        return filename.replace(matches[0], "" )
-    else:
-        return filename
 
-# Write output to file
-def write_output( base_address, bytes, filename ):
-    base_address_bytes = base_address.to_bytes(2, byteorder='little')
+def assemble( source, labels, base_address, mode ):        
     
-    with open(filename, "wb") as binary_file:
-        binary_file.write( base_address_bytes )
-        binary_file.write( bytes )
-        
-def dump_assembly( address, machine_code, assembly ):
-
-    tab = max(30 - len(machine_code),0)
-
-    str = "$" + '{:04x}'.format(address).upper() + "  "
-    str = str + machine_code.upper()
-    str = str + " " * tab
-
-    str = str + assembly + " "
-    log( LOG_INFO, str )
-
-def assemble( source, base_address, mode ):        
-    
-    global labels
+    assembly_output = bytearray()
     
     # parse the file
     matches = parse6510.parse(source)
 
-    log( LOG_DIAGNOSTIC, str(matches) )
+    loggy.log( loggy.LOG_DIAGNOSTIC, str(matches) )
 
     current_instruction = None
     idx = 0
@@ -112,7 +62,7 @@ def assemble( source, base_address, mode ):
 
         if ( mnemonics6510.isInstruction(match) ):
 
-            log( LOG_DIAGNOSTIC, "INSTRUCTION: " + match )
+            loggy.log( loggy.LOG_DIAGNOSTIC, "INSTRUCTION: " + match )
 
             # Obtain the current instruction
             current_instruction = mnemonics6510.getInstruction( match )
@@ -121,7 +71,7 @@ def assemble( source, base_address, mode ):
             # Check for implied addressing modes e.g. RTS, BRK, INC etc.
             if ( mnemonics6510.addressing_mode_Implied in current_instruction["addressing_modes"].keys() ):
 
-                log( LOG_DIAGNOSTIC, "Determined implied addressing: " + match )
+                loggy.log( loggy.LOG_DIAGNOSTIC, "Determined implied addressing: " + match )
 
                 opcode = current_instruction["addressing_modes"][mnemonics6510.addressing_mode_Implied]
                 
@@ -142,7 +92,7 @@ def assemble( source, base_address, mode ):
                 # Resolve Labels
                 if ( parse6510.is_label_reference(match) ):
 
-                    log( LOG_DIAGNOSTIC, "Parsed label/variable reference: " + match )
+                    loggy.log( loggy.LOG_DIAGNOSTIC, "Parsed label/variable reference: " + match )
 
                     # Store original declaration, in the case of < and > modifiers this is useful
                     orig_label = match
@@ -150,7 +100,7 @@ def assemble( source, base_address, mode ):
                     # Check for high/low byte modifier
                     if ( parse6510.is_high_low_byte_extract(orig_label) ):
                         match = match.replace("<", "").replace(">","")
-                        log( LOG_DIAGNOSTIC, "Label without high/low modifier is: " + match )
+                        loggy.log( loggy.LOG_DIAGNOSTIC, "Label without high/low modifier is: " + match )
 
                     # Check whether match exists in our label store
                     if ( match in labels.keys() ):
@@ -163,7 +113,7 @@ def assemble( source, base_address, mode ):
                             byte = parse6510.extract_high_low_byte( orig_label, match )
                             match = "#$" + '{:02x}'.format(byte)
                             
-                        log( LOG_DIAGNOSTIC, "Resolved label/variable reference: " + match )
+                        loggy.log( loggy.LOG_DIAGNOSTIC, "Resolved label/variable reference: " + match )
                     else:
 
                         if ( mode == MODE_PRESCAN ):
@@ -172,7 +122,7 @@ def assemble( source, base_address, mode ):
                             if ( parse6510.is_high_low_byte_extract(orig_label) ):
                                 match = "#$00"
                         elif ( mode == MODE_ASSEMBLE ):
-                            log( LOG_ERROR, "Unresolved label/variable reference: " + match )
+                            loggy.log( loggy.LOG_ERROR, "Unresolved label/variable reference: " + match )
                             exit(1)
                     
                     # Check for relative addressing
@@ -180,15 +130,15 @@ def assemble( source, base_address, mode ):
                     #       do not have to worry about any other scenarios here
                     if ( mnemonics6510.addressing_mode_Relative in current_instruction["addressing_modes"].keys() ):
     
-                        log( LOG_DIAGNOSTIC, "Determined relative addressing mode, referring to : " + match )
+                        loggy.log( loggy.LOG_DIAGNOSTIC, "Determined relative addressing mode, referring to : " + match )
  
                         if ( parse6510.is_word(match) ):
                             relative_offset = calculate_relative_offset( current_instruction_address, int( "0x" + match.replace("$",""),16 ) )
                             match = "$" + '{:02x}'.format(relative_offset)
-                            log( LOG_DIAGNOSTIC, "Resolved relative addressing: " + match )
+                            loggy.log(loggy.LOG_DIAGNOSTIC, "Resolved relative addressing: " + match )
                         else:
                             if ( mode == MODE_ASSEMBLE ):
-                                log( LOG_DIAGNOSTIC, "unresolved relative addressing: " + match )
+                                loggy.log( loggy.LOG_DIAGNOSTIC, "unresolved relative addressing: " + match )
                                 exit(1)
                             elif ( mode == MODE_PRESCAN ):
                                 match = "$00"
@@ -198,11 +148,11 @@ def assemble( source, base_address, mode ):
                     
                     if ( parse6510.matches_addressing_mode( match, addressing_mode ) == True ):
 
-                        log( LOG_DIAGNOSTIC, "Matched addressing mode " + str(addressing_mode) + " for " + match )
+                        loggy.log(loggy.LOG_DIAGNOSTIC, "Matched addressing mode " + str(addressing_mode) + " for " + match )
 
                         opcode = current_instruction["addressing_modes"][addressing_mode]
 
-                        log( LOG_DIAGNOSTIC, "Derived opcode " + str(opcode) )
+                        loggy.log(loggy.LOG_DIAGNOSTIC, "Derived opcode " + str(opcode) )
 
                         # Derived opcode from instruction + addressing mode, write it
                         if ( mode == MODE_ASSEMBLE ):
@@ -216,7 +166,7 @@ def assemble( source, base_address, mode ):
                         ilen = mnemonics6510.get_instruction_length(addressing_mode)
                         
                         if ( ilen == 2 ):
-                            log( LOG_DIAGNOSTIC, "Derived instruction length " + str(ilen) )
+                            loggy.log(loggy.LOG_DIAGNOSTIC, "Derived instruction length " + str(ilen) )
 
                             bytes = parse6510.parse_byte(match)
                             s_assembly = s_assembly + match
@@ -227,8 +177,8 @@ def assemble( source, base_address, mode ):
 
                                 address = address + 1
                         elif ( ilen == 3 ):  
-                            log( LOG_DIAGNOSTIC, "Derived instruction length " + str(ilen) )                          
-                            bytes = parse6510.parse_word(match)
+                            loggy.log(loggy.LOG_DIAGNOSTIC, "Derived instruction length " + str(ilen) )                          
+                            bytes = parse6510.parse_word_little_endian(match)
                             s_assembly = s_assembly + match
                             for b in bytes:
                                 if ( mode == MODE_ASSEMBLE ):
@@ -236,7 +186,7 @@ def assemble( source, base_address, mode ):
                                     s_machinecode = s_machinecode + '{:02x}'.format(b) + " "
                                 address = address + 1
                         else:
-                            log( LOG_ERROR, "[!] Invalid instruction length " + str(ilen))
+                            loggy.log( loggy.LOG_ERROR, "[!] Invalid instruction length " + str(ilen))
                             exit(1)
 
             # If Assembling then dump output
@@ -244,7 +194,7 @@ def assemble( source, base_address, mode ):
                 dump_assembly(instruction_address, s_machinecode, s_assembly )
         elif ( parse6510.is_bytestring_declaration(match) ):
 
-            log( LOG_DIAGNOSTIC, "Identified a bytestring " + match )
+            loggy.log(loggy.LOG_DIAGNOSTIC, "Identified a bytestring " + match )
 
             while ( idx + 1 < len(matches) and parse6510.is_byte( matches[idx+1] ) ):
                 idx = idx + 1
@@ -261,12 +211,12 @@ def assemble( source, base_address, mode ):
                 dump_assembly(instruction_address, s_machinecode, s_assembly )    
         elif ( parse6510.is_wordstring_declaration(match) ):
 
-            log( LOG_DIAGNOSTIC, "Identified a wordstring " + match )
+            loggy.log(loggy.LOG_DIAGNOSTIC, "Identified a wordstring " + match )
 
             while ( idx + 1 < len(matches) and parse6510.is_word( matches[idx+1] ) ):
                 idx = idx + 1
                 match = matches[idx]
-                bytes = parse6510.parse_word_not_endian(match)
+                bytes = parse6510.parse_word_big_endian(match)
                 
                 for b in bytes:
                     if ( mode == MODE_ASSEMBLE ):
@@ -282,37 +232,37 @@ def assemble( source, base_address, mode ):
             if ( mode == MODE_PRESCAN ):
                 label = match.replace(":","")
 
-                log( LOG_DIAGNOSTIC, "Encountered a label declaration on first pass " + label )
+                loggy.log(loggy.LOG_DIAGNOSTIC, "Encountered a label declaration on first pass " + label )
 
                 if ( label in labels.keys() ):
-                    log( LOG_ERROR, "[!] Duplicate label " + label )
+                    loggy.log( loggy.LOG_ERROR, "[!] Duplicate label " + label )
                     exit(1)
                 else:
                     labels[label] = '${:04x}'.format(address)
-                    log( LOG_DIAGNOSTIC, "Stored label " + label + " as " + labels[label] )
+                    loggy.log(loggy.LOG_DIAGNOSTIC, "Stored label " + label + " as " + labels[label] )
         elif ( parse6510.is_variable_declaration(match) ):
 
             if ( mode == MODE_PRESCAN ):
-                variable_name = parse6510.get_variable_name(match)
+                variable_name = parse6510.get_variable_name_from_declaration(match)
                 
-                log( LOG_DIAGNOSTIC, "Encountered a variable declaration on first pass " + variable_name )
+                loggy.log(loggy.LOG_DIAGNOSTIC, "Encountered a variable declaration on first pass " + variable_name )
 
                 # next token
                 idx = idx + 1
                 match = matches[idx]
                 
                 if ( variable_name in labels.keys() ):
-                    log( LOG_ERROR, "[!] Duplicate variable " + label )
+                    loggy.log( loggy.LOG_ERROR, "[!] Duplicate variable " + label )
                     exit(1)
                 else:
-                    log( LOG_DIAGNOSTIC, "Stored variable " + variable_name + " as " + match )
+                    loggy.log(loggy.LOG_DIAGNOSTIC, "Stored variable " + variable_name + " as " + match )
                     labels[variable_name] = match
 
         elif ( parse6510.is_org_directive( match ) ):
             
             if ( mode == MODE_PRESCAN ):
                 
-                log( LOG_DIAGNOSTIC, "Identified an .org directive on first pass" )
+                loggy.log(loggy.LOG_DIAGNOSTIC, "Identified an .org directive on first pass" )
 
                 # next token
                 idx = idx + 1
@@ -320,50 +270,29 @@ def assemble( source, base_address, mode ):
 
                 if ( parse6510.is_word( match ) ):
                     address = parse6510.word_to_int(match)
-                    log( LOG_INFO, "Setting origin to " + str(hex(address)) )
+                    loggy.log( loggy.LOG_INFO, "Setting origin to " + str(hex(address)) )
                 else:
-                    log( LOG_ERROR, "Invalid origin " + match )
+                    loggy.log( loggy.LOG_ERROR, "Invalid origin " + match )
                     exit(1)
 
         else:
-            log( LOG_DIAGNOSTIC, "Unhandled token " + match )
+            loggy.log(loggy.LOG_DIAGNOSTIC, "Unhandled token " + match )
 
         idx = idx + 1
 
-
-def start( ):
-
-    global LOG_LEVEL
-    base_address = 0xC000
-
-    args = parse_command_line()
-
-    if ( "log" in args and args.log != None ):
-        LOG_LEVEL = int( args.log )
-        log ( LOG_DIAGNOSTIC, "Setting log level to " + str(args.log) )
-    if ( "base" in args and args.base != None ):
-        base_address = int(args.base, 16)
-        log ( LOG_DIAGNOSTIC, "Setting base address to " + str(args.base) )
-    if ( "output" in args and args.base != None ):
-        base_address = int(args.base, 16)
-        log ( LOG_DIAGNOSTIC, "Setting output filename to " + str(args.output) )
-    else:
-        output_filename = generate_output_filename(args.filename)
-
-    # input file
-    f = open(args.filename, "r")
-    if ( "fileexists" == "fileexists" ):
-        source = f.read()
-    
-        log ( LOG_INFO, "*** PASS 1 ***")
-        assemble( source, base_address, MODE_PRESCAN )
-        log ( LOG_DIAGNOSTIC, str(labels) )
-        log ( LOG_INFO, "*** PASS 2 ***")
-        assemble( source, base_address, MODE_ASSEMBLE )
+    return assembly_output
 
 
+def run(source, base_address):
 
-        log ( LOG_INFO, "Writing to " + output_filename )
-        write_output( base_address, assembly_output, output_filename )
+    labels = {}
 
-start()
+    loggy.log ( loggy.LOG_INFO, "*** PASS 1 ***")
+    binary_output = assemble( source, labels, base_address, MODE_PRESCAN )
+    loggy.log ( loggy.LOG_DIAGNOSTIC, str(labels) )
+    loggy.log ( loggy.LOG_INFO, "*** PASS 2 ***")
+    binary_output = assemble( source, labels, base_address, MODE_ASSEMBLE )
+
+    return binary_output
+
+

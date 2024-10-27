@@ -1,4 +1,5 @@
 import re
+import loggy
 import mnemonics6510
 
 # Assembly Language Regexes
@@ -8,7 +9,6 @@ ASM_REGEX_WORDSTRING_DECL = "\.word\s?"
 ASM_REGEX_VAR_DECL = "[a-zA-Z0-9]{1,20}\s*=\s*"
 ASM_REGEX_LABEL_DECL = "[a-zA-Z0-9]{1,20}:"
 ASM_REGEX_LABEL = "[<>]?[a-zA-Z0-9]{1,20}"
-#ASM_REGEX_LABEL = "^[^#\$][<>]?[a-zA-Z0-9]{1,20}"
 ASM_REGEX_INSTRUCTION = "[a-zA-Z]{3}"
 ASM_REGEX_IMMEDIATE = "\#\$[0-9a-fA-F]{2}"
 ASM_REGEX_ABSOLUTE_X = "\$[0-9a-fA-F]{4},[X]"
@@ -31,7 +31,11 @@ ASM_REGEX_HEX8_DIGITS = "\$[0-9a-fA-F]{2}"
 ASM_REGEX_HEX16_DIGITS = "\$[0-9a-fA-F]{4}"
 
 # Use these for matching tokens that are already split
-ASM_REGEX_LABEL_TOKEN = "^[a-zA-Z0-9]{1,20}$"
+ASM_REGEX_LABEL_DECL_TOKEN = "[a-zA-Z0-9]{1,20}:$"
+ASM_REGEX_LABEL_TOKEN = "^[<>]?[a-zA-Z0-9]{1,20}$"
+ASM_REGEX_VARIABLE_DECL_TOKEN = "^[<>]?[a-zA-Z0-9]{1,20}"
+ASM_REGEX_VARIABLE_TOKEN = "^[<>]?[a-zA-Z0-9]{1,20}$"
+
 
 # Patterns
 asm_regex_list = [
@@ -76,17 +80,19 @@ op_regex_list = [
     ASM_REGEX_RELATIVE + "$"
 ]
 
-
 # join to one regex
 asm_regex = '|'.join(asm_regex_list)
 
-def parse( input_file ):
-    matches = re.findall(asm_regex, input_file)
+# PARSING ASSEMBLY
+def parse( input_string ):
+    matches = re.findall(asm_regex, input_string)
     return matches
 
 def matches_addressing_mode( token, addressing_mode ):
     match = re.match( op_regex_list[addressing_mode - 1], token )
     return match != None
+
+# PARSING OPERANDS
 
 def parse_byte( str ):
     bytes = []
@@ -94,13 +100,6 @@ def parse_byte( str ):
     if ( len(matches) > 0 ):
         bytes.append( int(matches[0].replace("$", "0x"), 16) )
     return bytes
-
-def parse_word( str ):
-    words = []
-    matches = re.findall( ASM_REGEX_HEX16_DIGITS, str )
-    if ( len(matches) > 0 ):
-        words.append( int(matches[0].replace("$", "0x"), 16) )
-    return words
 
 def is_byte( str ):
     matches = re.findall( ASM_REGEX_HEX8_DIGITS, str )
@@ -116,8 +115,8 @@ def parse_bytestring( str ):
     if ( len(matches) > 0 ):
         bytes.append( int(matches[0].replace("$", "0x"), 16) )
     return bytes
-
-def parse_word( str ):
+    
+def parse_word_little_endian( str ):
     bytes = []
     matches = re.findall( ASM_REGEX_HEX16_DIGITS, str )
     if ( len(matches) > 0 ):
@@ -125,12 +124,26 @@ def parse_word( str ):
         bytes.append( int( "0x" + raw_hex[2:],16 ) )
         bytes.append( int( "0x" + raw_hex[:2],16 ) )
     return bytes
+    
+def parse_word_big_endian( str ):
+    bytes = []
+    matches = re.findall( ASM_REGEX_HEX16_DIGITS, str )
+    if ( len(matches) > 0 ):
+        raw_hex = matches[0].replace("$", "")
+        bytes.append( int( "0x" + raw_hex[:2],16 ) )
+        bytes.append( int( "0x" + raw_hex[2:],16 ) )
+    return bytes
+
+def word_to_int( word ):
+    raw_hex = word.replace("$","")
+    hex = "0x" + raw_hex
+    return int(hex,16)
 
 def is_high_low_byte_extract( str ):
     return ( str[:1] == "<" or str[:1] == ">" )
 
 def extract_high_low_byte( label, str ):
-    bytes = parse_word(str)
+    bytes = parse_word_little_endian(str)
     if ( label[:1] == "<" ):
         return bytes[0]
     elif ( label[:1] == ">" ):
@@ -138,28 +151,7 @@ def extract_high_low_byte( label, str ):
     else:
         return None
     
-def parse_word_not_endian( str ):
-    bytes = []
-    matches = re.findall( ASM_REGEX_HEX16_DIGITS, str )
-    if ( len(matches) > 0 ):
-        raw_hex = matches[0].replace("$", "")
-        bytes.append( int( "0x" + raw_hex[:2],16 ) )
-        bytes.append( int( "0x" + raw_hex[2:],16 ) )
-    return bytes
-
-def word_to_bytes( word ):
-    bytes = bytearray()
-    raw_hex = hex(word).replace("0x","")
-    b1 = int( "0x" + raw_hex[:2],16 )
-    b2 = int( "0x" + raw_hex[2:],16 )
-    bytes.append( b1 )
-    bytes.append( b2 )
-    return bytes
-
-def word_to_int( word ):
-    raw_hex = word.replace("$","")
-    hex = "0x" + raw_hex
-    return int(hex,16)
+# BYTESTRINGS
 
 def is_bytestring_declaration( str ):
     matches = re.findall( ASM_REGEX_BYTESTRING_DECL, str )
@@ -173,23 +165,31 @@ def is_org_directive( str ):
     matches = re.findall( ASM_REGEX_ORG_DIRECTIVE, str )
     return len(matches) > 0
 
-def is_label_declaration( str ):
-    matches = re.findall( ASM_REGEX_LABEL_DECL, str )
-    return len(matches) > 0
+# LABELS
 
-def get_variable_name( str ):
-    matches = re.findall( ASM_REGEX_LABEL_TOKEN, str )
-    if ( len(matches) > 0 ):
-        return matches[0]
-    else:
-        return None
+def is_label_declaration( str ):
+    matches = re.findall( ASM_REGEX_LABEL_DECL_TOKEN, str )
+    return len(matches) > 0
 
 def is_label_reference( str ):
     matches = re.findall( ASM_REGEX_LABEL_TOKEN, str )
     # TODO would prefer to make this cleanly identify the label with REGEX
     return len(matches) > 0 and str[:1] != "#" and str[:1] != "$"
 
+
+# VARIABLES
+
 def is_variable_declaration( str ):
     matches = re.findall( ASM_REGEX_VAR_DECL, str )
-    
     return len(matches) > 0
+
+def is_variable_reference( str ):
+    matches = re.findall( ASM_REGEX_VARIABLE_TOKEN, str )
+    return len(matches) > 0
+
+def get_variable_name_from_declaration( str ):
+    matches = re.findall( ASM_REGEX_VARIABLE_DECL_TOKEN, str )
+    if ( len(matches) > 0 ):
+        return matches[0]
+    else:
+        return None
