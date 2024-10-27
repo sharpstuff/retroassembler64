@@ -18,7 +18,7 @@ MODE_PRESCAN = 0
 MODE_ASSEMBLE = 1
 
 # Logging modes
-LOG_LEVEL = 3
+LOG_LEVEL = 1
 LOG_ERROR = 0
 LOG_WARN = 1
 LOG_INFO = 2
@@ -37,6 +37,7 @@ def parse_command_line():
     # Add a filename argument
     parser.add_argument('filename', help='Input assembly file')
     parser.add_argument('-base',    help='Base address e.g. 0xC000')
+    parser.add_argument('-output',  help='Filename of assembled output')
     parser.add_argument('-log',     help='Log Level, Diagnostic = 3, Info = 2, Warnings = 1, Errors = 0')
 
     # Parse the arguments
@@ -66,7 +67,7 @@ def calculate_relative_offset(current_address, target_address):
 def generate_output_filename( filename ):
     matches = re.findall("\..*$", filename)
     if ( len(matches)>0 ):
-        return filename.replace(matches[0], "" ) + ".prg"
+        return filename.replace(matches[0], "" )
     else:
         return filename
 
@@ -164,7 +165,6 @@ def assemble( source, base_address, mode ):
                             
                         log( LOG_DIAGNOSTIC, "Resolved label/variable reference: " + match )
                     else:
-                        log( LOG_ERROR, "Unresolved label/variable reference: " + match )
 
                         if ( mode == MODE_PRESCAN ):
                             # If we are modifying then only output will be byte literal, so assume that for now
@@ -172,6 +172,7 @@ def assemble( source, base_address, mode ):
                             if ( parse6510.is_high_low_byte_extract(orig_label) ):
                                 match = "#$00"
                         elif ( mode == MODE_ASSEMBLE ):
+                            log( LOG_ERROR, "Unresolved label/variable reference: " + match )
                             exit(1)
                     
                     # Check for relative addressing
@@ -332,15 +333,22 @@ def assemble( source, base_address, mode ):
 
 def start( ):
 
-    args = parse_command_line()
     global LOG_LEVEL
     base_address = 0xC000
+
+    args = parse_command_line()
+
     if ( "log" in args and args.log != None ):
         LOG_LEVEL = int( args.log )
         log ( LOG_DIAGNOSTIC, "Setting log level to " + str(args.log) )
     if ( "base" in args and args.base != None ):
         base_address = int(args.base, 16)
         log ( LOG_DIAGNOSTIC, "Setting base address to " + str(args.base) )
+    if ( "output" in args and args.base != None ):
+        base_address = int(args.base, 16)
+        log ( LOG_DIAGNOSTIC, "Setting output filename to " + str(args.output) )
+    else:
+        output_filename = generate_output_filename(args.filename)
 
     # input file
     f = open(args.filename, "r")
@@ -353,7 +361,7 @@ def start( ):
         log ( LOG_INFO, "*** PASS 2 ***")
         assemble( source, base_address, MODE_ASSEMBLE )
 
-        output_filename = generate_output_filename(args.filename)
+
 
         log ( LOG_INFO, "Writing to " + output_filename )
         write_output( base_address, assembly_output, output_filename )

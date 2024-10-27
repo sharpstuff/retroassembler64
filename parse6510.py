@@ -30,7 +30,8 @@ ASM_REGEX_BYTESTRING = "\$\b[0-9A-F]{2}\b(\s*,\s*\$[0-9A-F]{2})*"
 ASM_REGEX_HEX8_DIGITS = "\$[0-9a-fA-F]{2}"
 ASM_REGEX_HEX16_DIGITS = "\$[0-9a-fA-F]{4}"
 
-ASM_REGEX_LABEL_OP = "^[a-zA-Z0-9]{1,20}$"
+# Use these for matching tokens that are already split
+ASM_REGEX_LABEL_TOKEN = "^[a-zA-Z0-9]{1,20}$"
 
 # Patterns
 asm_regex_list = [
@@ -177,14 +178,14 @@ def is_label_declaration( str ):
     return len(matches) > 0
 
 def get_variable_name( str ):
-    matches = re.findall( ASM_REGEX_LABEL, str )
+    matches = re.findall( ASM_REGEX_LABEL_TOKEN, str )
     if ( len(matches) > 0 ):
         return matches[0]
     else:
         return None
 
 def is_label_reference( str ):
-    matches = re.findall( ASM_REGEX_LABEL, str )
+    matches = re.findall( ASM_REGEX_LABEL_TOKEN, str )
     # TODO would prefer to make this cleanly identify the label with REGEX
     return len(matches) > 0 and str[:1] != "#" and str[:1] != "$"
 
