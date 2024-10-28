@@ -1,6 +1,5 @@
 import re
 import loggy
-import mnemonics6510
 
 # Assembly Language Regexes
 ASM_REGEX_ORG_DIRECTIVE = "\.org\s?"

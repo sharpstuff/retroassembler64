@@ -1,5 +1,4 @@
 import parse6510
-#import mnemonics6510
 import re
 import argparse
 import loggy
