@@ -1,7 +1,7 @@
 #! /bin/bash
 
 FILE=$1 
-OUTPUT=dev.d64
+OUTPUT=images/dev.d64
 
 echo "Writing $FILE"
 

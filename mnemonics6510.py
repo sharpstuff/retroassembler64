@@ -1,6 +1,7 @@
 instructionSet = {}
 
 # Addressing modes
+# Note: These have to mirror the order of op_regex_list in parse6510.py
 addressing_mode_Implied = 0
 addressing_mode_Immediate = 1
 addressing_mode_AbsoluteX = 2
@@ -19,6 +20,7 @@ addressing_mode_Relative = 12
 def addInstruction( operator, description ):
     if ( operator in instructionSet ):
         print ( operator + " already exists in instruction set" )
+        return False
     else:
         json = { 
             "operator": operator, 
@@ -27,6 +29,9 @@ def addInstruction( operator, description ):
         }
         
         instructionSet[operator] = json
+
+        return True
+    
 
 # Check if it is an instruction
 def isInstruction( operator ):

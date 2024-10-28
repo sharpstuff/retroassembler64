@@ -1,41 +1,73 @@
 import unittest
+import sys
+import os
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Import main modules
 import assembler
 import parse6510
 
-class AssemblerTests( unittest.TestCase ):
+class Parse6510Tests( unittest.TestCase ):
 
 # PENDING TEST COVERAGE
 #
 # def matches_addressing_mode( token, addressing_mode ): - unhappy paths
 
-    # PARSING
+    # parse6510
 
     def test_parse6510_parse(self):
-        matches = parse6510.parse( 'LDA' )
-        self.assertEqual( len(matches), 1 )
+        matches = parse6510.parse( 'LDA #$65\nRTS' )
+        self.assertEqual( len(matches), 3 )
         self.assertEqual( matches[0], 'LDA' )
 
 
-    def test_parse6510_matches_addressing_mode(self):
-        # Immediate
-        val = parse6510.matches_addressing_mode("#$65", 1 )
-        self.assertTrue(val, True)
+    def test_parse6510_matches_addressing_mode_immediate(self):
+        for am in range(1,12):
+            val = parse6510.matches_addressing_mode("#$65", am )
+            if ( am == 1 ):
+                self.assertTrue(val)
+            else:
+                self.assertFalse(val)
 
-        # Absolute X
-        val = parse6510.matches_addressing_mode("$D020,X", 2 )
-        self.assertTrue(val, True)
+    def test_parse6510_matches_addressing_mode_absolute(self):
 
-        # Absolute Y
-        val = parse6510.matches_addressing_mode("$D020,Y", 3 )
-        self.assertTrue(val, True)
+        for am in range(1,12):
+
+            # Absolute X
+            val = parse6510.matches_addressing_mode("$D020,X", am )
+            if ( am == 2 ):
+                self.assertTrue(val, True)
+            else:
+                self.assertFalse(val, False)
+
+            # Absolute Y
+            val = parse6510.matches_addressing_mode("$D020,Y", am )
+            if ( am == 3 ):
+                self.assertTrue(val, True)
+            else:
+                self.assertFalse(val, False)
+            
+            # Absolute
+            val = parse6510.matches_addressing_mode("$D020", am )
+            if ( am == 4 ):
+                self.assertTrue(val, True)
+            else:
+                self.assertFalse(val, False)
+
+
+    def test_parse6510_matches_addressing_mode_accumulator(self):
         
-        # Absolute
-        val = parse6510.matches_addressing_mode("$D020", 4 )
-        self.assertTrue(val, True)
+        for am in range(1,12):
 
-        # Accumulator
-        val = parse6510.matches_addressing_mode("A", 5 )
-        self.assertTrue(val, True)
+            val = parse6510.matches_addressing_mode("A", am )
+
+            if ( am == 5 ):
+                self.assertTrue(val, True)
+            else:
+                self.assertFalse(val, False)
+
+    def test_parse6510_matches_addressing_mode_zero_page(self):
 
         # Zero Page X
         val = parse6510.matches_addressing_mode("$20,X", 6 )
@@ -49,6 +81,8 @@ class AssemblerTests( unittest.TestCase ):
         val = parse6510.matches_addressing_mode("$20", 8 )
         self.assertTrue(val, True)
 
+    def test_parse6510_matches_addressing_mode_indexed(self):
+
         # Indirect indexed
         val = parse6510.matches_addressing_mode("($20),Y", 9 )
         self.assertTrue(val, True)
@@ -61,6 +95,7 @@ class AssemblerTests( unittest.TestCase ):
         val = parse6510.matches_addressing_mode("($20,X)", 11 )
         self.assertTrue(val, True)
 
+    def test_parse6510_matches_addressing_mode_relative(self):
         val = parse6510.matches_addressing_mode("$20", 12 )
         self.assertTrue(val, True)
 
@@ -206,41 +241,7 @@ class AssemblerTests( unittest.TestCase ):
         self.assertEqual(val, 192)
 
         val = parse6510.extract_high_low_byte("isr", "$C020")
-        self.assertEqual(val, None)
-
-    # ASSEMBLER
-
-    def test_assembler_output(self):
-        
-        with open("fixtures/border.asm", "r") as f:
-            expected = bytearray([0xa2, 0x00, 0x8e, 0x20, 0xd0, 0xe8, 0xe0, 0x10, 0xd0, 0xf8, 0xa2, 0x00, 0x4c, 0x02, 0xc0, 0x60  ])
-            source = f.read()
-            actual = assembler.run(source, 0xC000 )
-            
-            self.assertEqual(len(expected), len(actual), "Expected byte array length not same as fixture")
-            self.assertEqual(expected, actual, "Expected byte array does not match fixture")
-            
-        with open("fixtures/labels.asm", "r") as f:
-            expected = bytearray([0xad, 0x00, 0xc0, 0xa2, 0xf8, 0xa9, 0x15, 0xa9, 0xc0, 0x8e, 0x00, 0xc0, 
-                                  0xe8, 0xe0, 0x10, 0xd0, 0x01, 0x60, 0x4c, 0x05, 0xc0, 0xa9, 0x65, 0x8d, 
-                                  0x20, 0xd0, 0x60, 0xaa, 0xde, 0xad, 0xbe, 0xef, 0xaa, 0x55, 0xaa, 0x55, 
-                                  0x4c, 0x05, 0xc0])
-            source = f.read()
-            actual = assembler.run(source, 0xC000 )
-            
-            self.assertEqual(len(expected), len(actual), "Expected byte array length not same as fixture")
-            self.assertEqual(expected, actual, "Expected byte array does not match fixture")
-
-        with open("fixtures/hires.asm", "r") as f:
-            expected = bytearray([0xa9, 0x00, 0x85, 0xfb, 0xa9, 0x20, 0x85, 0xfc, 0xa9, 0x08, 0x0d, 0x18, 0xd0, 0x8d, 0x18, 0xd0, 
-                                  0xa9, 0x20, 0x0d, 0x11, 0xd0, 0x8d, 0x11, 0xd0, 0xa9, 0x00, 0xa0, 0x00, 0x91, 0xfb, 0xe6, 0xfb, 
-                                  0xa6, 0xfb, 0xe0, 0xff, 0xd0, 0xf6, 0x91, 0xfb, 0x85, 0xfb, 0xe6, 0xfc, 0xa6, 0xfc, 0xe0, 0x3f, 
-                                  0xd0, 0xea, 0x60])
-            source = f.read()
-            actual = assembler.run(source, 0xC000 )
-            
-            self.assertEqual(len(expected), len(actual), "Expected byte array length not same as fixture")
-            self.assertEqual(expected, actual, "Expected byte array does not match fixture")        
+        self.assertEqual(val, None) 
 
     def test_calculate_relative_offset(self):
         offset = assembler.calculate_relative_offset(0xC010, 0xC020)
