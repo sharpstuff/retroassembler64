@@ -6,7 +6,7 @@ class AssemblerTests( unittest.TestCase ):
 
 # PENDING TEST COVERAGE
 #
-# def matches_addressing_mode( token, addressing_mode ): - cover all modes
+# def matches_addressing_mode( token, addressing_mode ): - unhappy paths
 
     # PARSING
 
@@ -14,6 +14,7 @@ class AssemblerTests( unittest.TestCase ):
         matches = parse6510.parse( 'LDA' )
         self.assertEqual( len(matches), 1 )
         self.assertEqual( matches[0], 'LDA' )
+
 
     def test_parse6510_matches_addressing_mode(self):
         # Immediate
