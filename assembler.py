@@ -68,7 +68,7 @@ def assemble( source, labels, base_address, mode ):
             current_instruction = mnemonics6510.getInstruction( match )
             current_instruction_address = address
 
-            # Check for implied addressing modes e.g. RTS, BRK, INC etc.
+            # Check for implied addressing modes that do not have an operand e.g. RTS, BRK, INC etc.
             if ( mnemonics6510.addressing_mode_Implied in current_instruction["addressing_modes"].keys() ):
 
                 loggy.log( loggy.LOG_DIAGNOSTIC, "Determined implied addressing: " + match )

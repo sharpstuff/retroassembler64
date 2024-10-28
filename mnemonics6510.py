@@ -16,6 +16,7 @@ addressing_mode_Indirect = 10
 addressing_mode_Indexed_Indirect_X = 11
 addressing_mode_Relative = 12
 
+
 # Add instruction to the language
 def addInstruction( operator, description ):
     if ( operator in instructionSet ):
@@ -40,12 +41,14 @@ def isInstruction( operator ):
     else:
         return False
 
+
 # Get instruction
 def getInstruction( operator ):
     if ( operator in instructionSet ):
         return instructionSet[operator]
     else:
         return None
+
     
 # Add opcode to the language
 def addOpcode( operator, addressing_mode, opcode ):
