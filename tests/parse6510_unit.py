@@ -243,11 +243,5 @@ class Parse6510Tests( unittest.TestCase ):
         val = parse6510.extract_high_low_byte("isr", "$C020")
         self.assertEqual(val, None) 
 
-    def test_calculate_relative_offset(self):
-        offset = assembler.calculate_relative_offset(0xC010, 0xC020)
-        self.assertEqual(offset, 14)
-        offset = assembler.calculate_relative_offset(0xC020, 0xC010)
-        self.assertEqual(offset, 238)
-
 if __name__ == '__main__':
         unittest.main()

@@ -6,7 +6,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 # Import main modules
 import assembler
-import parse6510
 
 class AssemblerTests( unittest.TestCase ):
 
@@ -49,6 +48,6 @@ class AssemblerTests( unittest.TestCase ):
         self.assertEqual(offset, 14)
         offset = assembler.calculate_relative_offset(0xC020, 0xC010)
         self.assertEqual(offset, 238)
-        
+
 if __name__ == '__main__':
         unittest.main()

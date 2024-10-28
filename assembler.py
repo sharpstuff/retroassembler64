@@ -286,7 +286,6 @@ def assemble( source, labels, base_address, mode ):
 def run(source, base_address):
 
     labels = {}
-
     loggy.log ( loggy.LOG_INFO, "*** PASS 1 ***")
     binary_output = assemble( source, labels, base_address, MODE_PRESCAN )
     loggy.log ( loggy.LOG_DIAGNOSTIC, str(labels) )
