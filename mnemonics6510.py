@@ -10,12 +10,10 @@ addressing_mode_Accumulator = 5
 addressing_mode_ZeroPageX = 6
 addressing_mode_ZeroPageY = 7
 addressing_mode_ZeroPage = 8
-addressing_mode_Indirect_Indexed_X = 9
-addressing_mode_Indirect_Indexed_Y = 10
-addressing_mode_Indirect = 11
-addressing_mode_Indexed_Indirect_X = 12
-addressing_mode_Indexed_Indirect_Y = 13
-addressing_mode_Relative = 14
+addressing_mode_Indirect_Indexed_Y = 9
+addressing_mode_Indirect = 10
+addressing_mode_Indexed_Indirect_X = 11
+addressing_mode_Relative = 12
 
 # Add instruction to the language
 def addInstruction( operator, description ):
@@ -65,10 +63,6 @@ def get_instruction_length(addressing_mode):
     elif( mode == addressing_mode_Accumulator):
         instruction_length = 1
     elif( mode == addressing_mode_Indexed_Indirect_X ):
-        instruction_length = 2
-    elif( mode == addressing_mode_Indexed_Indirect_Y ):
-        instruction_length = 2
-    elif( mode == addressing_mode_Indirect_Indexed_X ):
         instruction_length = 2
     elif( mode == addressing_mode_Indirect_Indexed_Y ):
         instruction_length = 2
@@ -170,7 +164,7 @@ addOpcode("AND",addressing_mode_Absolute, 0x2D)
 addOpcode("AND",addressing_mode_AbsoluteX, 0x3D)
 addOpcode("AND",addressing_mode_AbsoluteY, 0x39)
 addOpcode("AND",addressing_mode_Indexed_Indirect_X, 0x21)
-addOpcode("AND",addressing_mode_Indexed_Indirect_Y, 0x31)
+addOpcode("AND",addressing_mode_Indirect_Indexed_Y, 0x31)
 
 # ASL
 addOpcode("ASL",addressing_mode_Accumulator, 0x0A)

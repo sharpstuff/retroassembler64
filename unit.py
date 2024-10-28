@@ -16,10 +16,54 @@ class AssemblerTests( unittest.TestCase ):
         self.assertEqual( matches[0], 'LDA' )
 
     def test_parse6510_matches_addressing_mode(self):
+        # Immediate
         val = parse6510.matches_addressing_mode("#$65", 1 )
         self.assertTrue(val, True)
+
+        # Absolute X
+        val = parse6510.matches_addressing_mode("$D020,X", 2 )
+        self.assertTrue(val, True)
+
+        # Absolute Y
+        val = parse6510.matches_addressing_mode("$D020,Y", 3 )
+        self.assertTrue(val, True)
+        
+        # Absolute
         val = parse6510.matches_addressing_mode("$D020", 4 )
         self.assertTrue(val, True)
+
+        # Accumulator
+        val = parse6510.matches_addressing_mode("A", 5 )
+        self.assertTrue(val, True)
+
+        # Zero Page X
+        val = parse6510.matches_addressing_mode("$20,X", 6 )
+        self.assertTrue(val, True)
+
+        # Zero Page Y
+        val = parse6510.matches_addressing_mode("$20,Y", 7 )
+        self.assertTrue(val, True)
+
+        # Zero Page
+        val = parse6510.matches_addressing_mode("$20", 8 )
+        self.assertTrue(val, True)
+
+        # Indirect indexed
+        val = parse6510.matches_addressing_mode("($20),Y", 9 )
+        self.assertTrue(val, True)
+
+        # Indirect
+        val = parse6510.matches_addressing_mode("($D020)", 10 )
+        self.assertTrue(val, True)
+
+        # Indexed indirect
+        val = parse6510.matches_addressing_mode("($20,X)", 11 )
+        self.assertTrue(val, True)
+
+        val = parse6510.matches_addressing_mode("$20", 12 )
+        self.assertTrue(val, True)
+
+
 
     # PARSING OPERANDS
 
