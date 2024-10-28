@@ -7,6 +7,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 # Import main modules
 import assembler
 
+asm64 = assembler.Assembler()
+
 class AssemblerTests( unittest.TestCase ):
 
     # ASSEMBLER
@@ -16,7 +18,7 @@ class AssemblerTests( unittest.TestCase ):
         with open("fixtures/border.asm", "r") as f:
             expected = bytearray([0xa2, 0x00, 0x8e, 0x20, 0xd0, 0xe8, 0xe0, 0x10, 0xd0, 0xf8, 0xa2, 0x00, 0x4c, 0x02, 0xc0, 0x60  ])
             source = f.read()
-            actual = assembler.run(source, 0xC000 )
+            actual = asm64.run(source, 0xC000 )
             
             self.assertEqual(len(expected), len(actual), "Expected byte array length not same as fixture")
             self.assertEqual(expected, actual, "Expected byte array does not match fixture")
@@ -27,7 +29,7 @@ class AssemblerTests( unittest.TestCase ):
                                   0x20, 0xd0, 0x60, 0xaa, 0xde, 0xad, 0xbe, 0xef, 0xaa, 0x55, 0xaa, 0x55, 
                                   0x4c, 0x05, 0xc0])
             source = f.read()
-            actual = assembler.run(source, 0xC000 )
+            actual = asm64.run(source, 0xC000 )
             
             self.assertEqual(len(expected), len(actual), "Expected byte array length not same as fixture")
             self.assertEqual(expected, actual, "Expected byte array does not match fixture")
@@ -38,15 +40,15 @@ class AssemblerTests( unittest.TestCase ):
                                   0xa6, 0xfb, 0xe0, 0xff, 0xd0, 0xf6, 0x91, 0xfb, 0x85, 0xfb, 0xe6, 0xfc, 0xa6, 0xfc, 0xe0, 0x3f, 
                                   0xd0, 0xea, 0x60])
             source = f.read()
-            actual = assembler.run(source, 0xC000 )
+            actual = asm64.run(source, 0xC000 )
             
             self.assertEqual(len(expected), len(actual), "Expected byte array length not same as fixture")
             self.assertEqual(expected, actual, "Expected byte array does not match fixture")       
 
     def test_calculate_relative_offset(self):
-        offset = assembler.calculate_relative_offset(0xC010, 0xC020)
+        offset = asm64.calculate_relative_offset(0xC010, 0xC020)
         self.assertEqual(offset, 14)
-        offset = assembler.calculate_relative_offset(0xC020, 0xC010)
+        offset = asm64.calculate_relative_offset(0xC020, 0xC010)
         self.assertEqual(offset, 238)
 
 if __name__ == '__main__':

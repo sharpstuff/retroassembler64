@@ -4,6 +4,8 @@ import os
 import argparse
 import loggy
 
+asm64 = assembler.Assembler()
+
 # Parse the command line
 def parse_command_line():
     # Create the parser
@@ -67,7 +69,7 @@ def start( ):
         f = open(args.filename, "r")
         source = f.read()
 
-        assembly_output = assembler.run(source, base_address)
+        assembly_output = asm64.run(source, base_address)
 
         loggy.log ( loggy.LOG_INFO, "Writing to " + output_filename )
         write_binary_output( base_address, assembly_output, output_filename )
