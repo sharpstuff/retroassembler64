@@ -1,8 +1,10 @@
 import parse6510
-import mnemonics6510
+#import mnemonics6510
 import re
 import argparse
 import loggy
+
+import instructions
 
 # Notes:
 # https://c64os.com/post/6502instructions
@@ -10,6 +12,9 @@ import loggy
 # Modes
 MODE_PRESCAN = 0
 MODE_ASSEMBLE = 1
+
+instruction_set = instructions.Instructions()
+instruction_set.loadInstructions()
 
 def dump_assembly( address, machine_code, assembly ):
 
@@ -60,20 +65,20 @@ def assemble( source, labels, base_address, mode ):
 
         instruction_address = address
 
-        if ( mnemonics6510.isInstruction(match) ):
+        if ( instruction_set.isInstruction(match) ):
 
             loggy.log( loggy.LOG_DIAGNOSTIC, "INSTRUCTION: " + match )
 
             # Obtain the current instruction
-            current_instruction = mnemonics6510.getInstruction( match )
+            current_instruction = instruction_set.getInstruction( match )
             current_instruction_address = address
 
             # Check for implied addressing modes that do not have an operand e.g. RTS, BRK, INC etc.
-            if ( mnemonics6510.addressing_mode_Implied in current_instruction["addressing_modes"].keys() ):
+            if ( instruction_set.addressing_mode_Implied in current_instruction["addressing_modes"].keys() ):
 
                 loggy.log( loggy.LOG_DIAGNOSTIC, "Determined implied addressing: " + match )
 
-                opcode = current_instruction["addressing_modes"][mnemonics6510.addressing_mode_Implied]
+                opcode = current_instruction["addressing_modes"][instruction_set.addressing_mode_Implied]
                 
                 # Assemble the instruction
                 if ( mode == MODE_ASSEMBLE ):
@@ -128,7 +133,7 @@ def assemble( source, labels, base_address, mode ):
                     # Check for relative addressing
                     # Note: Instructions that use relative addressing have no other addressing modes so you 
                     #       do not have to worry about any other scenarios here
-                    if ( mnemonics6510.addressing_mode_Relative in current_instruction["addressing_modes"].keys() ):
+                    if ( instruction_set.addressing_mode_Relative in current_instruction["addressing_modes"].keys() ):
     
                         loggy.log( loggy.LOG_DIAGNOSTIC, "Determined relative addressing mode, referring to : " + match )
  
@@ -163,7 +168,7 @@ def assemble( source, labels, base_address, mode ):
                         address = address + 1
 
                         # Determine instruction length based on addressing mode
-                        ilen = mnemonics6510.get_instruction_length(addressing_mode)
+                        ilen = instruction_set.get_instruction_length(addressing_mode)
                         
                         if ( ilen == 2 ):
                             loggy.log(loggy.LOG_DIAGNOSTIC, "Derived instruction length " + str(ilen) )
