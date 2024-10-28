@@ -1,4 +1,4 @@
-class Instructions:
+class InstructionSet:
 
     addressing_mode_Implied = 0
     addressing_mode_Immediate = 1

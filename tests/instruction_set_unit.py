@@ -5,9 +5,9 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Import main modules
-import instructions
+import instruction_set
 
-instruction_set = instructions.Instructions()
+instruction_set = instruction_set.InstructionSet()
 
 class MnemonicsTests( unittest.TestCase ):
     

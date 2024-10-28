@@ -1,5 +1,4 @@
 import assembler
-import parse6510
 import re
 import os
 import argparse
