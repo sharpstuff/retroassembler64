@@ -22,7 +22,6 @@ class AssemblyParser:
     ASM_REGEX_INDEXED_INDIRECT_X = "\(\$[0-9a-fA-F]{2},[X]\)" # (Indirect,X)
     ASM_REGEX_RELATIVE = "\$[0-9a-fA-F]{2}"
     ASM_REGEX_ACCUMULATOR = "[A]"
-    ASM_REGEX_CRLF = "\r\n"
 
     ASM_REGEX_BYTESTRING = "\$\b[0-9A-F]{2}\b(\s*,\s*\$[0-9A-F]{2})*"
     ASM_REGEX_HEX8_DIGITS = "\$[0-9a-fA-F]{2}"
@@ -55,8 +54,7 @@ class AssemblyParser:
             self.ASM_REGEX_INDIRECT,
             self.ASM_REGEX_INDEXED_INDIRECT_X,
             self.ASM_REGEX_RELATIVE,
-            self.ASM_REGEX_ACCUMULATOR,
-            self.ASM_REGEX_CRLF
+            self.ASM_REGEX_ACCUMULATOR
         ]
 
         # Note: Order has to mirror the addressing_mode constants in mnemonics6510.py

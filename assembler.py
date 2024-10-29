@@ -14,6 +14,7 @@ class Assembler:
     MODE_PRESCAN = 0
     MODE_ASSEMBLE = 1
 
+    # Constructor (of sorts)
     def __init__(self):
 
         self._instruction_set = instruction_set.InstructionSet()
@@ -27,19 +28,29 @@ class Assembler:
     def reset(self):
         self._address = 0xC000
         self._labels = {}
+        self._assembly_output = bytearray()
 
-    def dump_assembly( self, address, machine_code, assembly ):
+        self._machine_code_line = ""
+        self._assembly_line = ""
 
-        tab = max(30 - len(machine_code),0)
+
+    # Dump assembly line
+    def dump_assembly( self, address ):
+
+        tab = max(30 - len(self._machine_code_line),0)
 
         str = "$" + '{:04x}'.format(address).upper() + "  "
-        str = str + machine_code.upper()
+        str = str + self._machine_code_line.upper()
         str = str + " " * tab
 
-        str = str + assembly + " "
+        str = str + self._assembly_line + " "
         loggy.log( loggy.LOG_INFO, str )
+
+        self._assembly_line = ""
+        self._machine_code_line = ""
     
 
+    
     # Calculate offset for relative addressing mode
     def calculate_relative_offset(self, current_address, target_address):
         
@@ -83,11 +94,38 @@ class Assembler:
             loggy.log( loggy.LOG_ERROR, "Invalid origin " + token )
             exit(1)
 
+    
+    def parse_wordstring( self, instruction_address, matches, idx, mode ):
+        
+        while ( idx + 1 < len(matches) and self._parser.is_word( matches[idx+1] ) ):
+            idx = idx + 1
+            match = matches[idx]
+            bytes = self._parser.parse_word_big_endian(match)
+            
+            for b in bytes:
+                if ( mode == self.MODE_ASSEMBLE ):
+                    self._assembly_output.append(b)
+                    self._machine_code_line = self._machine_code_line + '{:02x}'.format(b) + " "
+                    self._assembly_line = self._assembly_line + match + " "
+                self._address = self._address + 2
+            
+
+    def parse_bytestring( self, instruction_address, matches, idx, mode ):
+        
+        while ( idx + 1 < len(matches) and self._parser.is_byte( matches[idx+1] ) ):
+            idx = idx + 1
+            match = matches[idx]
+            bytes = self._parser.parse_byte(match)
+            for b in bytes:
+                if ( mode == self.MODE_ASSEMBLE ):
+                    self._assembly_output.append(b)
+                    self._assembly_line = self._assembly_line + match + " "
+                    self._machine_code_line = self._machine_code_line + '{:02x}'.format(b) + " "
+                self._address = self._address + 1
+
 
     def assemble( self, source, base_address, mode ):        
-        
-        assembly_output = bytearray()
-        
+
         # parse the file
         matches = self._parser.parse(source)
 
@@ -96,11 +134,11 @@ class Assembler:
         current_instruction = None
         idx = 0
         self._address = base_address
+        self._assembly_line = ""
+        self._machine_code_line = ""
 
         while idx < len(matches):
             match = matches[idx]
-            s_assembly = ""
-            s_machinecode = ""
 
             instruction_address = self._address
 
@@ -121,9 +159,9 @@ class Assembler:
                     
                     # Assemble the instruction
                     if ( mode == self.MODE_ASSEMBLE ):
-                        assembly_output.append(opcode)
-                        s_assembly = s_assembly + current_instruction["operator"]
-                        s_machinecode = s_machinecode + '{:02x}'.format(opcode) + "       "
+                        self._assembly_output.append(opcode)
+                        self._assembly_line = self._assembly_line + current_instruction["operator"]
+                        self._machine_code_line = self._machine_code_line + '{:02x}'.format(opcode) + "       "
                     self._address = self._address + 1
                 else:
                     
@@ -200,9 +238,9 @@ class Assembler:
 
                             # Derived opcode from instruction + addressing mode, write it
                             if ( mode == self.MODE_ASSEMBLE ):
-                                assembly_output.append(opcode)
-                                s_assembly = s_assembly + current_instruction["operator"] + " "
-                                s_machinecode = s_machinecode + '{:02x}'.format(opcode) + " "
+                                self._assembly_output.append(opcode)
+                                self._assembly_line = self._assembly_line + current_instruction["operator"] + " "
+                                self._machine_code_line = self._machine_code_line + '{:02x}'.format(opcode) + " "
 
                             self._address = self._address + 1
 
@@ -213,21 +251,21 @@ class Assembler:
                                 loggy.log(loggy.LOG_DIAGNOSTIC, "Derived instruction length " + str(ilen) )
 
                                 bytes = self._parser.parse_byte(match)
-                                s_assembly = s_assembly + match
+                                self._assembly_line = self._assembly_line + match
                                 for b in bytes:
                                     if ( mode == self.MODE_ASSEMBLE ):
-                                        assembly_output.append(b)
-                                        s_machinecode = s_machinecode + '{:02x}'.format(b) + "    "
+                                        self._assembly_output.append(b)
+                                        self._machine_code_line = self._machine_code_line + '{:02x}'.format(b) + "    "
 
                                 self._address = self._address + 1
                             elif ( ilen == 3 ):  
                                 loggy.log(loggy.LOG_DIAGNOSTIC, "Derived instruction length " + str(ilen) )                          
                                 bytes = self._parser.parse_word_little_endian(match)
-                                s_assembly = s_assembly + match
+                                self._assembly_line = self._assembly_line + match
                                 for b in bytes:
                                     if ( mode == self.MODE_ASSEMBLE ):
-                                        assembly_output.append(b)
-                                        s_machinecode = s_machinecode + '{:02x}'.format(b) + " "
+                                        self._assembly_output.append(b)
+                                        self._machine_code_line = self._machine_code_line + '{:02x}'.format(b) + " "
                                     self._address = self._address + 1
                             else:
                                 loggy.log( loggy.LOG_ERROR, "[!] Invalid instruction length " + str(ilen))
@@ -235,43 +273,29 @@ class Assembler:
 
                 # If Assembling then dump output
                 if ( mode == self.MODE_ASSEMBLE ):
-                    self.dump_assembly(instruction_address, s_machinecode, s_assembly )
+                    self.dump_assembly( instruction_address )
+
             elif ( self._parser.is_bytestring_declaration(match) ):
 
                 loggy.log(loggy.LOG_DIAGNOSTIC, "Identified a bytestring " + match )
 
-                while ( idx + 1 < len(matches) and self._parser.is_byte( matches[idx+1] ) ):
-                    idx = idx + 1
-                    match = matches[idx]
-                    bytes = self._parser.parse_byte(match)
-                    for b in bytes:
-                        if ( mode == self.MODE_ASSEMBLE ):
-                            assembly_output.append(b)
-                            s_assembly = s_assembly + match + " "
-                            s_machinecode = s_machinecode + '{:02x}'.format(b) + " "
-                        self._address = self._address + 1
+                self.parse_bytestring( instruction_address, matches, idx, mode )
+                
                 # If Assembling then dump output
                 if ( mode == self.MODE_ASSEMBLE ):
-                    self.dump_assembly(instruction_address, s_machinecode, s_assembly )    
+                    self.dump_assembly( instruction_address )
+
             elif ( self._parser.is_wordstring_declaration(match) ):
 
                 loggy.log(loggy.LOG_DIAGNOSTIC, "Identified a wordstring " + match )
 
-                while ( idx + 1 < len(matches) and self._parser.is_word( matches[idx+1] ) ):
-                    idx = idx + 1
-                    match = matches[idx]
-                    bytes = self._parser.parse_word_big_endian(match)
-                    
-                    for b in bytes:
-                        if ( mode == self.MODE_ASSEMBLE ):
-                            assembly_output.append(b)
-                            s_machinecode = s_machinecode + '{:02x}'.format(b) + " "
-                        self._address = self._address + 2
-                    s_assembly = s_assembly + match + " "
+                # Loop until we run out of words
+                self.parse_wordstring( instruction_address, matches, idx, mode )
+
                 # If Assembling then dump output
                 if ( mode == self.MODE_ASSEMBLE ):
-                    self.dump_assembly(instruction_address, s_machinecode, s_assembly )
-                    
+                    self.dump_assembly(instruction_address )
+
             elif ( self._parser.is_label_declaration(match) ):
                 
                 if ( mode == self.MODE_PRESCAN ):
@@ -311,7 +335,7 @@ class Assembler:
 
             idx = idx + 1
 
-        return assembly_output
+        return self._assembly_output
 
 
     def run( self, source, base_address):
