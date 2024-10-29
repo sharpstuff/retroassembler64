@@ -1,7 +1,7 @@
 import re
 import loggy
 
-class ParseAssembly:
+class AssemblyParser:
 
     ASM_REGEX_ORG_DIRECTIVE = "\.org\s?"
     ASM_REGEX_BYTESTRING_DECL = "\.byte\s?"

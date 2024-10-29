@@ -3,7 +3,7 @@ import argparse
 import loggy
 
 import instruction_set
-import parse_assembly
+import assembly_parser
 
 # Notes:
 # https://c64os.com/post/6502instructions
@@ -19,7 +19,7 @@ class Assembler:
         self.instruction_set = instruction_set.InstructionSet()
         self.instruction_set.loadInstructions()
 
-        self.parser = parse_assembly.ParseAssembly()
+        self.parser = assembly_parser.AssemblyParser()
 
     def dump_assembly( self, address, machine_code, assembly ):
 

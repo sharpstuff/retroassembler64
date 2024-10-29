@@ -4,9 +4,9 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-import parse_assembly
+import assembly_parser
 
-parser = parse_assembly.ParseAssembly()
+parser = assembly_parser.AssemblyParser()
 
 class Parse6510Tests( unittest.TestCase ):
 
