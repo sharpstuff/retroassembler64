@@ -26,5 +26,6 @@ isr:
 	.byte $AA
 	.word $DEAD $BEEF
 	.byte $AA, $55, $AA, $55
+	.string "Dead Beef"
 
 	JMP loop

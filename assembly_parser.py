@@ -6,6 +6,7 @@ class AssemblyParser:
     ASM_REGEX_ORG_DIRECTIVE = "\.org\s?"
     ASM_REGEX_BYTESTRING_DECL = "\.byte\s?"
     ASM_REGEX_WORDSTRING_DECL = "\.word\s?"
+    ASM_REGEX_STRING_DECL = "\.string\s?"
     ASM_REGEX_VAR_DECL = "[a-zA-Z0-9]{1,20}\s*=\s*"
     ASM_REGEX_LABEL_DECL = "[a-zA-Z0-9]{1,20}:"
     ASM_REGEX_LABEL = "[<>]?[a-zA-Z0-9]{1,20}"
@@ -22,10 +23,12 @@ class AssemblyParser:
     ASM_REGEX_INDEXED_INDIRECT_X = "\(\$[0-9a-fA-F]{2},[X]\)" # (Indirect,X)
     ASM_REGEX_RELATIVE = "\$[0-9a-fA-F]{2}"
     ASM_REGEX_ACCUMULATOR = "[A]"
+    ASM_REGEX_STRING = "\".*\""
 
     ASM_REGEX_BYTESTRING = "\$\b[0-9A-F]{2}\b(\s*,\s*\$[0-9A-F]{2})*"
     ASM_REGEX_HEX8_DIGITS = "\$[0-9a-fA-F]{2}"
     ASM_REGEX_HEX16_DIGITS = "\$[0-9a-fA-F]{4}"
+    
 
     # Use these for matching tokens that are already split
     ASM_REGEX_LABEL_DECL_TOKEN = "[a-zA-Z0-9]{1,20}:$"
@@ -39,6 +42,7 @@ class AssemblyParser:
             self.ASM_REGEX_ORG_DIRECTIVE,
             self.ASM_REGEX_BYTESTRING_DECL,
             self.ASM_REGEX_WORDSTRING_DECL,
+            self.ASM_REGEX_STRING_DECL,
             self.ASM_REGEX_VAR_DECL,
             self.ASM_REGEX_LABEL_DECL,
             self.ASM_REGEX_LABEL,
@@ -54,7 +58,8 @@ class AssemblyParser:
             self.ASM_REGEX_INDIRECT,
             self.ASM_REGEX_INDEXED_INDIRECT_X,
             self.ASM_REGEX_RELATIVE,
-            self.ASM_REGEX_ACCUMULATOR
+            self.ASM_REGEX_ACCUMULATOR,
+            self.ASM_REGEX_STRING
         ]
 
         # Note: Order has to mirror the addressing_mode constants in mnemonics6510.py
@@ -152,6 +157,10 @@ class AssemblyParser:
 
     def is_wordstring_declaration( self, str ):
         matches = re.findall( self.ASM_REGEX_WORDSTRING_DECL, str )
+        return len(matches) > 0
+
+    def is_string_declaration( self, str ):
+        matches = re.findall( self.ASM_REGEX_STRING_DECL, str )
         return len(matches) > 0
 
     def is_org_directive( self, str ):

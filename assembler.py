@@ -177,7 +177,9 @@ class Assembler:
                     self._machine_code_line = self._machine_code_line + '{:02x}'.format(b) + " "
                     self._assembly_line = self._assembly_line + match + " "
                 self._address = self._address + 2
-            
+        
+        return idx
+
     # Parse a series of 8 bit bytes, used to store arbitrary strings of bytes in assembly output
     def parse_bytestring( self, instruction_address, matches, idx, mode ):
         
@@ -192,7 +194,29 @@ class Assembler:
                     self._machine_code_line = self._machine_code_line + '{:02x}'.format(b) + " "
                 self._address = self._address + 1
 
-    
+        return idx
+
+
+    def parse_string(self,instruction_address, matches, idx, mode ):
+        idx = idx + 1
+        match = matches[idx]
+
+        loggy.log( loggy.LOG_DIAGNOSTIC, "Parsing string " + match )
+        str = match.replace("\"","")
+
+        for char in str:
+            b = ord(char)
+            self._assembly_output.append(b)
+            self._machine_code_line = self._machine_code_line + '{:02x}'.format(b) + " "
+        
+        self._machine_code_line = self._machine_code_line + '{:02x}'.format(0) + " "
+        self._assembly_output.append(0)
+        
+        self._assembly_line = self._assembly_line + match + " "
+
+        return idx
+
+
     # Set the base address of assembly output
     def set_base_address( self, base_address ):
         self._base_address = base_address
@@ -335,7 +359,7 @@ class Assembler:
 
                 loggy.log(loggy.LOG_DIAGNOSTIC, "Identified a bytestring " + match )
 
-                self.parse_bytestring( instruction_address, matches, idx, mode )
+                idx = self.parse_bytestring( instruction_address, matches, idx, mode )
                 
                 # If Assembling then dump output
                 if ( mode == self.MODE_ASSEMBLE ):
@@ -346,11 +370,21 @@ class Assembler:
                 loggy.log(loggy.LOG_DIAGNOSTIC, "Identified a wordstring " + match )
 
                 # Loop until we run out of words
-                self.parse_wordstring( instruction_address, matches, idx, mode )
+                idx = self.parse_wordstring( instruction_address, matches, idx, mode )
 
                 # If Assembling then dump output
                 if ( mode == self.MODE_ASSEMBLE ):
                     self.dump_assembly(instruction_address )
+
+            elif ( self._parser.is_string_declaration(match) ):
+
+                loggy.log(loggy.LOG_DIAGNOSTIC, "Identified a string " + match )
+
+                idx = self.parse_string( instruction_address, matches, idx, mode )
+                
+                # If Assembling then dump output
+                if ( mode == self.MODE_ASSEMBLE ):
+                    self.dump_assembly( instruction_address )
 
             elif ( self._parser.is_label_declaration(match) ):
                 
