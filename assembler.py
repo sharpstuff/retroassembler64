@@ -26,6 +26,7 @@ class Assembler:
 
     # reset the assembler
     def reset(self):
+        self._base_address = 0xC000
         self._address = 0xC000
         self._labels = {}
         self._assembly_output = bytearray()
@@ -88,7 +89,8 @@ class Assembler:
     def parse_org_directive( self, token ):
         
         if ( self._parser.is_word( token ) ):
-            self._address = self._parser.word_to_int(token)
+            self._base_address = self._parser.word_to_int(token)
+            self._address = self._base_address
             loggy.log( loggy.LOG_INFO, "Setting origin to " + str(hex(self._address)) )
         else:
             loggy.log( loggy.LOG_ERROR, "Invalid origin " + token )
@@ -123,8 +125,13 @@ class Assembler:
                     self._machine_code_line = self._machine_code_line + '{:02x}'.format(b) + " "
                 self._address = self._address + 1
 
+    
+    def set_base_address( self, base_address ):
+        self._base_address = base_address
+        self._address = base_address
 
-    def assemble( self, source, base_address, mode ):        
+
+    def assemble( self, source, mode ):        
 
         # parse the file
         matches = self._parser.parse(source)
@@ -133,9 +140,15 @@ class Assembler:
 
         current_instruction = None
         idx = 0
-        self._address = base_address
+        
         self._assembly_line = ""
         self._machine_code_line = ""
+
+        # In run() we call set base address before the first pass, this sets address and base_address
+        # We then do 1st pass assemble which updates base_address with any changes on org directive
+        # So for 2nd pass assemble we do not call set_base_address so that we can ensure we don't override 
+        # the above
+        self._address = self._base_address
 
         while idx < len(matches):
             match = matches[idx]
@@ -338,15 +351,22 @@ class Assembler:
         return self._assembly_output
 
 
-    def run( self, source, base_address):
+    def run( self, source, base_address ):
 
         self.reset()
-        loggy.log ( loggy.LOG_INFO, "*** PASS 1 ***")
-        binary_output = self.assemble( source, base_address, self.MODE_PRESCAN )
-        loggy.log ( loggy.LOG_DIAGNOSTIC, str(self._labels) )
-        loggy.log ( loggy.LOG_INFO, "*** PASS 2 ***")
-        binary_output = self.assemble( source, base_address, self.MODE_ASSEMBLE )
 
-        return binary_output
+        self.set_base_address( base_address )
+
+        loggy.log ( loggy.LOG_INFO, "*** PASS 1 ***")
+        assembly_output = self.assemble( source, self.MODE_PRESCAN )
+
+        loggy.log ( loggy.LOG_DIAGNOSTIC, str(self._labels) )
+
+        loggy.log ( loggy.LOG_INFO, "*** PASS 2 ***")
+        assembly_output = self.assemble( source, self.MODE_ASSEMBLE )
+
+        assembly_header = bytearray( base_address.to_bytes(2, byteorder='little') )
+
+        return assembly_header + assembly_output
 
 

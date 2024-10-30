@@ -35,11 +35,9 @@ def generate_output_filename( filename ):
 
 
 # Write output to file
-def write_binary_output( base_address, bytes, filename ):
-    base_address_bytes = base_address.to_bytes(2, byteorder='little')
+def write_binary_output( bytes, filename ):
     
     with open(filename, "wb") as binary_file:
-        binary_file.write( base_address_bytes )
         binary_file.write( bytes )
         
 
@@ -72,6 +70,6 @@ def start( ):
         assembly_output = asm64.run(source, base_address)
 
         loggy.log ( loggy.LOG_INFO, "Writing to " + output_filename )
-        write_binary_output( base_address, assembly_output, output_filename )
+        write_binary_output( assembly_output, output_filename )
 
 start()
