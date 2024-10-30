@@ -2,7 +2,7 @@
 
 ## Usage
 
-`python3 retroassembler.py Input assembly file [arguments]
+`python3 retroassembler.py Input assembly file [arguments]`
 
 ## Arguments
 * -base 0xC000
