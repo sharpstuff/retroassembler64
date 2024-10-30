@@ -51,7 +51,6 @@ class Assembler:
         self._machine_code_line = ""
     
 
-    
     # Calculate offset for relative addressing mode
     def calculate_relative_offset(self, current_address, target_address):
         
@@ -67,7 +66,18 @@ class Assembler:
             offset = (256 + offset)  # Convert to two's complement for negative values
 
         return offset
+
+
+    # Parse implied instructions with no operands, i.e. RTS, BRK, INX etc.
+    def parse_implied_instruction( self, current_instruction ):
     
+        # Assemble the instruction
+        opcode = current_instruction["addressing_modes"][self._instruction_set.addressing_mode_Implied]
+        self._assembly_output.append(opcode)
+        self._assembly_line = self._assembly_line + current_instruction["operator"]
+        self._machine_code_line = self._machine_code_line + '{:02x}'.format(opcode) + "       "
+
+    # Parse label declaration, i.e. 'foo:' preceding a line with an instruction on it
     def parse_label_declaration( self, label_name ):
         if ( label_name in self._labels.keys() ):
             loggy.log( loggy.LOG_ERROR, "[!] Duplicate label " + label_name )
@@ -75,8 +85,9 @@ class Assembler:
         else:
             self._labels[label_name] = '${:04x}'.format(self._address)
             loggy.log(loggy.LOG_DIAGNOSTIC, "Stored label " + label_name + " as " + self._labels[label_name] )
-            
 
+
+    # Parse variable declaration, i.e. 'FOO = 5'
     def parse_variable_declaration( self, variable_name, token ):
         if ( variable_name in self._labels.keys() ):
             loggy.log( loggy.LOG_ERROR, "[!] Duplicate variable " + variable_name )
@@ -86,6 +97,61 @@ class Assembler:
             self._labels[variable_name] = token
 
 
+    # Parse label references, i.e. where variables / labels are used as operands like JMP foo
+    def parse_label_reference( self, match, mode ):
+                        
+        # Store original declaration, in the case of < and > modifiers this is useful
+        orig_label = match
+
+        # Check for high/low byte modifier
+        if ( self._parser.is_high_low_byte_extract(orig_label) ):
+            match = match.replace("<", "").replace(">","")
+            loggy.log( loggy.LOG_DIAGNOSTIC, "Label without high/low modifier is: " + match )
+
+        # Check whether match exists in our label store
+        if ( match in self._labels.keys() ):
+            
+            # Resolve the label
+            match = self._labels[match]
+            
+            # If we are modifying then use original label
+            if ( self._parser.is_high_low_byte_extract(orig_label) ):
+                byte = self._parser.extract_high_low_byte( orig_label, match )
+                match = "#$" + '{:02x}'.format(byte)
+                
+            loggy.log( loggy.LOG_DIAGNOSTIC, "Resolved label/variable reference: " + match )
+        else:
+
+            if ( mode == self.MODE_PRESCAN ):
+                # If we are modifying then only output will be byte literal, so assume that for now
+                # so we can derive addressing mode and instruction length
+                if ( self._parser.is_high_low_byte_extract(orig_label) ):
+                    match = "#$00"
+            elif ( mode == self.MODE_ASSEMBLE ):
+                loggy.log( loggy.LOG_ERROR, "Unresolved label/variable reference: " + match )
+                exit(1)
+
+        return match
+            
+
+    # Parse a relative address and turn a reference to 16 bit address to a byte  
+    def parse_relative_address( self, match, current_instruction_address, mode ):
+
+        if ( self._parser.is_word(match) ):
+            relative_offset = self.calculate_relative_offset( current_instruction_address, int( "0x" + match.replace("$",""),16 ) )
+            match = "$" + '{:02x}'.format(relative_offset)
+            loggy.log(loggy.LOG_DIAGNOSTIC, "Resolved relative addressing: " + match )
+        else:
+            if ( mode == self.MODE_ASSEMBLE ):
+                loggy.log( loggy.LOG_DIAGNOSTIC, "unresolved relative addressing: " + match )
+                exit(1)
+            elif ( mode == self.MODE_PRESCAN ):
+                match = "$00"
+        
+        return match
+
+
+    # Parse assembly directive to instruct what address assembly output should be addressed at
     def parse_org_directive( self, token ):
         
         if ( self._parser.is_word( token ) ):
@@ -97,6 +163,7 @@ class Assembler:
             exit(1)
 
     
+    # Parse a series of 16 bit words, used to store arbitrary strings of words in assembly output
     def parse_wordstring( self, instruction_address, matches, idx, mode ):
         
         while ( idx + 1 < len(matches) and self._parser.is_word( matches[idx+1] ) ):
@@ -111,7 +178,7 @@ class Assembler:
                     self._assembly_line = self._assembly_line + match + " "
                 self._address = self._address + 2
             
-
+    # Parse a series of 8 bit bytes, used to store arbitrary strings of bytes in assembly output
     def parse_bytestring( self, instruction_address, matches, idx, mode ):
         
         while ( idx + 1 < len(matches) and self._parser.is_byte( matches[idx+1] ) ):
@@ -126,11 +193,61 @@ class Assembler:
                 self._address = self._address + 1
 
     
+    # Set the base address of assembly output
     def set_base_address( self, base_address ):
         self._base_address = base_address
         self._address = base_address
 
 
+    # Given instruction and addressing mode write the opcode to assembly output
+    def assemble_instruction( self, current_instruction, addressing_mode, mode ):
+        
+        opcode = current_instruction["addressing_modes"][addressing_mode]
+
+        loggy.log(loggy.LOG_DIAGNOSTIC, "Derived opcode " + str(opcode) )
+
+        # Derived opcode from instruction + addressing mode, write it
+        if ( mode == self.MODE_ASSEMBLE ):
+            self._assembly_output.append(opcode)
+            self._assembly_line = self._assembly_line + current_instruction["operator"] + " "
+            self._machine_code_line = self._machine_code_line + '{:02x}'.format(opcode) + " "
+
+        self._address = self._address + 1
+
+    # Given operand and addressing mode write the operand to assembly output
+    def assemble_operand( self, addressing_mode, match, mode ):
+
+        # Determine instruction length based on addressing mode
+        instruction_length = self._instruction_set.get_instruction_length(addressing_mode)
+
+        if ( instruction_length == 2 ):
+            loggy.log(loggy.LOG_DIAGNOSTIC, "Derived instruction length " + str(instruction_length) )
+
+            bytes = self._parser.parse_byte(match)
+            self._assembly_line = self._assembly_line + match
+            for b in bytes:
+                if ( mode == self.MODE_ASSEMBLE ):
+                    self._assembly_output.append(b)
+                    self._machine_code_line = self._machine_code_line + '{:02x}'.format(b) + "    "
+
+            self._address = self._address + 1
+        elif ( instruction_length == 3 ):  
+            loggy.log(loggy.LOG_DIAGNOSTIC, "Derived instruction length " + str(instruction_length) )                          
+            bytes = self._parser.parse_word_little_endian(match)
+            self._assembly_line = self._assembly_line + match
+            for b in bytes:
+                if ( mode == self.MODE_ASSEMBLE ):
+                    self._assembly_output.append(b)
+                    self._machine_code_line = self._machine_code_line + '{:02x}'.format(b) + " "
+                self._address = self._address + 1
+        else:
+            loggy.log( loggy.LOG_ERROR, "[!] Invalid instruction length " + str(instruction_length))
+            exit(1)
+
+    
+    #################################################
+    # Main loop for assembler!
+    #################################################
     def assemble( self, source, mode ):        
 
         # parse the file
@@ -168,14 +285,11 @@ class Assembler:
 
                     loggy.log( loggy.LOG_DIAGNOSTIC, "Determined implied addressing: " + match )
 
-                    opcode = current_instruction["addressing_modes"][self._instruction_set.addressing_mode_Implied]
-                    
-                    # Assemble the instruction
                     if ( mode == self.MODE_ASSEMBLE ):
-                        self._assembly_output.append(opcode)
-                        self._assembly_line = self._assembly_line + current_instruction["operator"]
-                        self._machine_code_line = self._machine_code_line + '{:02x}'.format(opcode) + "       "
+                        self.parse_implied_instruction( current_instruction )
+
                     self._address = self._address + 1
+
                 else:
                     
                     # All other addressing modes get parsed here
@@ -184,41 +298,12 @@ class Assembler:
                     idx = idx + 1
                     match = matches[idx]
 
-                    # Resolve Labels
+                    # Resolve Labels referenced in the assembly
                     if ( self._parser.is_label_reference(match) ):
 
                         loggy.log( loggy.LOG_DIAGNOSTIC, "Parsed label/variable reference: " + match )
 
-                        # Store original declaration, in the case of < and > modifiers this is useful
-                        orig_label = match
-
-                        # Check for high/low byte modifier
-                        if ( self._parser.is_high_low_byte_extract(orig_label) ):
-                            match = match.replace("<", "").replace(">","")
-                            loggy.log( loggy.LOG_DIAGNOSTIC, "Label without high/low modifier is: " + match )
-
-                        # Check whether match exists in our label store
-                        if ( match in self._labels.keys() ):
-                            
-                            # Resolve the label
-                            match = self._labels[match]
-                            
-                            # If we are modifying then use original label
-                            if ( self._parser.is_high_low_byte_extract(orig_label) ):
-                                byte = self._parser.extract_high_low_byte( orig_label, match )
-                                match = "#$" + '{:02x}'.format(byte)
-                                
-                            loggy.log( loggy.LOG_DIAGNOSTIC, "Resolved label/variable reference: " + match )
-                        else:
-
-                            if ( mode == self.MODE_PRESCAN ):
-                                # If we are modifying then only output will be byte literal, so assume that for now
-                                # so we can derive addressing mode and instruction length
-                                if ( self._parser.is_high_low_byte_extract(orig_label) ):
-                                    match = "#$00"
-                            elif ( mode == self.MODE_ASSEMBLE ):
-                                loggy.log( loggy.LOG_ERROR, "Unresolved label/variable reference: " + match )
-                                exit(1)
+                        match = self.parse_label_reference( match, mode )
                         
                         # Check for relative addressing
                         # Note: Instructions that use relative addressing have no other addressing modes so you 
@@ -227,16 +312,7 @@ class Assembler:
         
                             loggy.log( loggy.LOG_DIAGNOSTIC, "Determined relative addressing mode, referring to : " + match )
     
-                            if ( self._parser.is_word(match) ):
-                                relative_offset = self.calculate_relative_offset( current_instruction_address, int( "0x" + match.replace("$",""),16 ) )
-                                match = "$" + '{:02x}'.format(relative_offset)
-                                loggy.log(loggy.LOG_DIAGNOSTIC, "Resolved relative addressing: " + match )
-                            else:
-                                if ( mode == self.MODE_ASSEMBLE ):
-                                    loggy.log( loggy.LOG_DIAGNOSTIC, "unresolved relative addressing: " + match )
-                                    exit(1)
-                                elif ( mode == self.MODE_PRESCAN ):
-                                    match = "$00"
+                            match = self.parse_relative_address( match, current_instruction_address, mode )
 
                     # match addressing modes
                     for addressing_mode in current_instruction["addressing_modes"]:
@@ -245,44 +321,11 @@ class Assembler:
 
                             loggy.log(loggy.LOG_DIAGNOSTIC, "Matched addressing mode " + str(addressing_mode) + " for " + match )
 
-                            opcode = current_instruction["addressing_modes"][addressing_mode]
+                            # Assembly step for instructions, this writes the instruction to the output!
+                            self.assemble_instruction( current_instruction, addressing_mode, mode )
 
-                            loggy.log(loggy.LOG_DIAGNOSTIC, "Derived opcode " + str(opcode) )
-
-                            # Derived opcode from instruction + addressing mode, write it
-                            if ( mode == self.MODE_ASSEMBLE ):
-                                self._assembly_output.append(opcode)
-                                self._assembly_line = self._assembly_line + current_instruction["operator"] + " "
-                                self._machine_code_line = self._machine_code_line + '{:02x}'.format(opcode) + " "
-
-                            self._address = self._address + 1
-
-                            # Determine instruction length based on addressing mode
-                            ilen = self._instruction_set.get_instruction_length(addressing_mode)
-                            
-                            if ( ilen == 2 ):
-                                loggy.log(loggy.LOG_DIAGNOSTIC, "Derived instruction length " + str(ilen) )
-
-                                bytes = self._parser.parse_byte(match)
-                                self._assembly_line = self._assembly_line + match
-                                for b in bytes:
-                                    if ( mode == self.MODE_ASSEMBLE ):
-                                        self._assembly_output.append(b)
-                                        self._machine_code_line = self._machine_code_line + '{:02x}'.format(b) + "    "
-
-                                self._address = self._address + 1
-                            elif ( ilen == 3 ):  
-                                loggy.log(loggy.LOG_DIAGNOSTIC, "Derived instruction length " + str(ilen) )                          
-                                bytes = self._parser.parse_word_little_endian(match)
-                                self._assembly_line = self._assembly_line + match
-                                for b in bytes:
-                                    if ( mode == self.MODE_ASSEMBLE ):
-                                        self._assembly_output.append(b)
-                                        self._machine_code_line = self._machine_code_line + '{:02x}'.format(b) + " "
-                                    self._address = self._address + 1
-                            else:
-                                loggy.log( loggy.LOG_ERROR, "[!] Invalid instruction length " + str(ilen))
-                                exit(1)
+                            # Assembly step for operands, this writes the operand to the output!
+                            self.assemble_operand( addressing_mode, match, mode )
 
                 # If Assembling then dump output
                 if ( mode == self.MODE_ASSEMBLE ):
@@ -350,7 +393,9 @@ class Assembler:
 
         return self._assembly_output
 
-
+    #################################################
+    # Entry point for assembler!
+    #################################################
     def run( self, source, base_address ):
 
         self.reset()

@@ -16,7 +16,7 @@ class AssemblerTests( unittest.TestCase ):
     def test_assembler_output(self):
         
         with open("fixtures/border.asm", "r") as f:
-            expected = bytearray([0x00, 0xc0, 0xa2, 0x00, 0x8e, 0x20, 0xd0, 0xe8, 0xe0, 0x10, 0xd0, 0xf8, 0xa2, 0x00, 0x4c, 0x02, 0xc0, 0x60  ])
+            expected = bytearray([0x00, 0xc0, 0xa2, 0x00, 0x8e, 0x20, 0xd0, 0xe8, 0xe0, 0x10, 0xd0, 0xf8, 0xa2, 0x00, 0x4c, 0x02, 0xc0, 0x60 ])
             source = f.read()
             actual = asm64.run(source, 0xC000 )
             
@@ -45,11 +45,12 @@ class AssemblerTests( unittest.TestCase ):
             self.assertEqual(len(expected), len(actual), "HIRES.ASM: Expected byte array length not same as fixture")
             self.assertEqual(expected, actual, "HIRES.ASM: Expected byte array does not match fixture")       
 
+
     def test_calculate_relative_offset(self):
         offset = asm64.calculate_relative_offset(0xC010, 0xC020)
-        self.assertEqual(offset, 14)
+        self.assertEqual(offset, 14, "Testing forward relative offset")
         offset = asm64.calculate_relative_offset(0xC020, 0xC010)
-        self.assertEqual(offset, 238)
+        self.assertEqual(offset, 238, "Testing backward relative offset")
 
 if __name__ == '__main__':
         unittest.main()

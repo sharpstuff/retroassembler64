@@ -1,3 +1,5 @@
+import loggy
+
 class InstructionSet:
 
     addressing_mode_Implied = 0
@@ -20,7 +22,7 @@ class InstructionSet:
 
     def addInstruction( self, operator, description ):
         if ( operator in self._instructions ):
-            print ( operator + " already exists in instruction set" )
+            loggy.log ( loggy.LOG_ERROR, operator + " already exists in instruction set" )
             return False
         else:
             json = { 
