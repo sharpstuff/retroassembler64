@@ -168,6 +168,14 @@ class Parse6510Tests( unittest.TestCase ):
         val = parser.is_label_reference("isr:")
         self.assertFalse(val)
 
+    
+    def test_parse6510_is_string_declaration(self):
+        val = parser.is_string_declaration(".string")
+        self.assertTrue(val)
+
+        val = parser.is_string_declaration("string")
+        self.assertFalse(val)
+
 
     # VARIABLES
     
@@ -205,6 +213,15 @@ class Parse6510Tests( unittest.TestCase ):
     def test_parse6510_is_org_directive(self):
         val = parser.is_org_directive(".org $C000")
         self.assertTrue(val)
+
+
+    def test_parse6510_is_include_directive(self):
+        val = parser.is_include_directive(".include")
+        self.assertTrue(val)
+
+        val = parser.is_include_directive("include")
+        self.assertFalse(val)
+
 
     # BYTESTRINGS
 

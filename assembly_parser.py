@@ -7,6 +7,7 @@ class AssemblyParser:
     ASM_REGEX_BYTESTRING_DECL = "\.byte\s?"
     ASM_REGEX_WORDSTRING_DECL = "\.word\s?"
     ASM_REGEX_STRING_DECL = "\.string\s?"
+    ASM_REGEX_INCLUDE_DECL = "\.include\s?"
     ASM_REGEX_VAR_DECL = "[a-zA-Z0-9]{1,20}\s*=\s*"
     ASM_REGEX_LABEL_DECL = "[a-zA-Z0-9]{1,20}:"
     ASM_REGEX_LABEL = "[<>]?[a-zA-Z0-9]{1,20}"
@@ -43,6 +44,7 @@ class AssemblyParser:
             self.ASM_REGEX_BYTESTRING_DECL,
             self.ASM_REGEX_WORDSTRING_DECL,
             self.ASM_REGEX_STRING_DECL,
+            self.ASM_REGEX_INCLUDE_DECL,
             self.ASM_REGEX_VAR_DECL,
             self.ASM_REGEX_LABEL_DECL,
             self.ASM_REGEX_LABEL,
@@ -161,6 +163,10 @@ class AssemblyParser:
 
     def is_string_declaration( self, str ):
         matches = re.findall( self.ASM_REGEX_STRING_DECL, str )
+        return len(matches) > 0
+    
+    def is_include_directive( self, str ):
+        matches = re.findall( self.ASM_REGEX_INCLUDE_DECL, str )
         return len(matches) > 0
 
     def is_org_directive( self, str ):

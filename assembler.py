@@ -152,8 +152,11 @@ class Assembler:
 
 
     # Parse assembly directive to instruct what address assembly output should be addressed at
-    def parse_org_directive( self, token ):
-        
+    def parse_org_directive( self, matches, idx ):
+        # next token
+        idx = idx + 1
+        token = matches[idx]
+
         if ( self._parser.is_word( token ) ):
             self._base_address = self._parser.word_to_int(token)
             self._address = self._base_address
@@ -161,6 +164,8 @@ class Assembler:
         else:
             loggy.log( loggy.LOG_ERROR, "Invalid origin " + token )
             exit(1)
+
+        return idx
 
     
     # Parse a series of 16 bit words, used to store arbitrary strings of words in assembly output
@@ -197,7 +202,7 @@ class Assembler:
         return idx
 
 
-    def parse_string(self,instruction_address, matches, idx, mode ):
+    def parse_string(self, instruction_address, matches, idx, mode ):
         idx = idx + 1
         match = matches[idx]
 
@@ -216,6 +221,13 @@ class Assembler:
 
         return idx
 
+    def parse_include_directive(self, matches, idx ):
+        idx = idx + 1
+        match = matches[idx]
+
+        loggy.log(loggy.LOG_ERROR, ".include Not yet implemented")
+
+        return idx
 
     # Set the base address of assembly output
     def set_base_address( self, base_address ):
@@ -414,12 +426,18 @@ class Assembler:
                     
                     loggy.log(loggy.LOG_DIAGNOSTIC, "Identified an .org directive on first pass" )
 
-                    # next token
-                    idx = idx + 1
-                    match = matches[idx]
+                    # parse the address token
+                    idx = self.parse_org_directive( matches, idx )
+
+            elif ( self._parser.is_include_directive( match ) ):
+                
+                if ( mode == self.MODE_PRESCAN ):
+                    
+                    loggy.log(loggy.LOG_DIAGNOSTIC, "Identified an .include directive on first pass" )
 
                     # parse the address token
-                    self.parse_org_directive( match )
+                    idx = self.parse_include_directive( matches, idx )
+
             else:
                 loggy.log(loggy.LOG_DIAGNOSTIC, "Unhandled token " + match )
 
