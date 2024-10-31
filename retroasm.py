@@ -64,12 +64,13 @@ def start( ):
 
     # input file
     if ( os.path.isfile(args.filename) ):
-        f = open(args.filename, "r")
-        source = f.read()
 
-        assembly_output = asm64.run(source, base_address)
+        with open(args.filename, "r") as source_file:
+            source = source_file.read()
 
-        loggy.log ( loggy.LOG_INFO, "Writing to " + output_filename )
-        write_binary_output( assembly_output, output_filename )
+            assembly_output = asm64.run(source, base_address)
+
+            loggy.log ( loggy.LOG_INFO, "Writing to " + output_filename )
+            write_binary_output( assembly_output, output_filename )
 
 start()

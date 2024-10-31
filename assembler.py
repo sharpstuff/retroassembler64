@@ -1,6 +1,7 @@
 import re
 import argparse
 import loggy
+import os
 
 import instruction_set
 import assembly_parser
@@ -11,8 +12,9 @@ import assembly_parser
 class Assembler:
 
     # Modes
-    MODE_PRESCAN = 0
-    MODE_ASSEMBLE = 1
+    MODE_PRE_PROCESS = 0
+    MODE_PRESCAN = 1
+    MODE_ASSEMBLE = 2
 
     # Constructor (of sorts)
     def __init__(self):
@@ -185,6 +187,7 @@ class Assembler:
         
         return idx
 
+
     # Parse a series of 8 bit bytes, used to store arbitrary strings of bytes in assembly output
     def parse_bytestring( self, instruction_address, matches, idx, mode ):
         
@@ -221,13 +224,54 @@ class Assembler:
 
         return idx
 
+
     def parse_include_directive(self, matches, idx ):
+
+        loggy.log( loggy.LOG_WARN, "Include function unreliable")
+
+        include_idx = idx
+
         idx = idx + 1
         match = matches[idx]
 
-        loggy.log(loggy.LOG_ERROR, ".include Not yet implemented")
+        filename = match.replace("\"","")
+
+        loggy.log(loggy.LOG_DIAGNOSTIC, ".include " + filename)
+
+        if ( os.path.isfile(filename) ):
+
+            with open(filename, "r") as source_file:
+                source = source_file.read()
+
+                # parse the file
+                include_matches = self._parser.parse(source)
+
+                # remove include directive and path
+                matches.pop(include_idx)
+                matches.pop(include_idx)
+
+                elements_to_copy = len(matches) - include_idx
+                included_matches_len = len(include_matches)
+
+                # Extend matches array
+                for a in range(0,included_matches_len):
+                    matches.append('')
+                
+                copy_dest_idx = len(matches)-1
+                copy_source_idx = copy_dest_idx - included_matches_len
+                for b in range(0,elements_to_copy):
+                    matches[copy_dest_idx] = matches[copy_source_idx]
+                    
+                    copy_dest_idx = copy_dest_idx - 1
+                    copy_source_idx = copy_source_idx - 1
+                    elements_to_copy = elements_to_copy - 1
+
+                for match in include_matches:
+                    matches[include_idx] = match
+                    include_idx = include_idx + 1
 
         return idx
+
 
     # Set the base address of assembly output
     def set_base_address( self, base_address ):
@@ -249,6 +293,7 @@ class Assembler:
             self._machine_code_line = self._machine_code_line + '{:02x}'.format(opcode) + " "
 
         self._address = self._address + 1
+
 
     # Given operand and addressing mode write the operand to assembly output
     def assemble_operand( self, addressing_mode, match, mode ):
@@ -284,10 +329,7 @@ class Assembler:
     #################################################
     # Main loop for assembler!
     #################################################
-    def assemble( self, source, mode ):        
-
-        # parse the file
-        matches = self._parser.parse(source)
+    def assemble( self, matches, mode ):        
 
         loggy.log( loggy.LOG_DIAGNOSTIC, str(matches) )
 
@@ -431,7 +473,7 @@ class Assembler:
 
             elif ( self._parser.is_include_directive( match ) ):
                 
-                if ( mode == self.MODE_PRESCAN ):
+                if ( mode == self.MODE_PRE_PROCESS ):
                     
                     loggy.log(loggy.LOG_DIAGNOSTIC, "Identified an .include directive on first pass" )
 
@@ -445,6 +487,7 @@ class Assembler:
 
         return self._assembly_output
 
+
     #################################################
     # Entry point for assembler!
     #################################################
@@ -454,13 +497,19 @@ class Assembler:
 
         self.set_base_address( base_address )
 
-        loggy.log ( loggy.LOG_INFO, "*** PASS 1 ***")
-        assembly_output = self.assemble( source, self.MODE_PRESCAN )
+        # parse the file
+        matches = self._parser.parse(source)
+
+        loggy.log ( loggy.LOG_INFO, "*** Pre-process ***")
+        assembly_output = self.assemble( matches, self.MODE_PRE_PROCESS )
+
+        loggy.log ( loggy.LOG_INFO, "*** Labels and variables ***")
+        assembly_output = self.assemble( matches, self.MODE_PRESCAN )
 
         loggy.log ( loggy.LOG_DIAGNOSTIC, str(self._labels) )
 
-        loggy.log ( loggy.LOG_INFO, "*** PASS 2 ***")
-        assembly_output = self.assemble( source, self.MODE_ASSEMBLE )
+        loggy.log ( loggy.LOG_INFO, "*** Assemble ***")
+        assembly_output = self.assemble( matches, self.MODE_ASSEMBLE )
 
         assembly_header = bytearray( base_address.to_bytes(2, byteorder='little') )
 
