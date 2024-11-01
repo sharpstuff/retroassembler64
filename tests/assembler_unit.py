@@ -50,6 +50,99 @@ class AssemblerTests( unittest.TestCase ):
         asm64.reset()
 
 
+    def test_parse_variable_declaration(self):
+
+        asm64.reset()
+
+        asm64.parse_variable_declaration( "foo", "5" )
+
+        self.assertTrue( "foo" in asm64._labels )
+        self.assertTrue( asm64._labels["foo" ] == "5" )
+
+        asm64.reset()
+
+
+    def test_parse_label_reference(self):
+
+        self._address = "$c000"
+        asm64.reset()
+
+        asm64.parse_label_declaration("loop:")
+
+        val = asm64.parse_label_reference("loop", asm64.MODE_PRESCAN )
+
+
+    def test_parse_org_directive(self):
+
+        matches = ['.org', '$d000']
+
+        idx = asm64.parse_org_directive(matches, 0)
+
+        self.assertEqual(asm64._base_address, 0xD000)
+
+
+    def test_parse_relative_address(self):
+
+        val = asm64.parse_relative_address( "$C010", 0xC000, asm64.MODE_ASSEMBLE )
+
+        self.assertEqual(val, '$0e')
+
+
+    def test_parse_wordstring(self):
+
+        matches = [".word", "$DEAD", "$beef", "RTS" ]
+        
+        self._address = "$c000"
+        asm64.reset()
+        
+        val = asm64.parse_wordstring(0xC000, matches, 0, asm64.MODE_ASSEMBLE )
+
+        expected = bytearray([0xDE, 0xAD, 0xBE, 0xEF])
+
+        self.assertEqual(len(expected), len(asm64._assembly_output) )
+        self.assertEqual(expected, asm64._assembly_output )
+
+        asm64.reset()
+
+
+    def test_parse_bytestring(self):
+
+        matches = [".byte", "$DE", "$AD", "$be", "$ef", "RTS" ]
+        
+        self._address = "$c000"
+        asm64.reset()
+        
+        val = asm64.parse_bytestring(0xC000, matches, 0, asm64.MODE_ASSEMBLE )
+
+        expected = bytearray([0xDE, 0xAD, 0xBE, 0xEF])
+
+        self.assertEqual(len(expected), len(asm64._assembly_output) )
+        self.assertEqual(expected, asm64._assembly_output )
+        
+        asm64.reset()
+
+
+    def test_parse_string(self):
+        matches = [".string",  "\"Dead Beef\"", "LDA"]
+        
+        self._address = "$c000"
+        asm64.reset()
+
+        val = asm64.parse_string(0xC000, matches, 0, asm64.MODE_ASSEMBLE )
+
+        expected = bytearray([68, 101, 97, 100, 32, 66, 101, 101, 102, 0])
+        
+        self.assertEqual(len(expected), len(asm64._assembly_output) )
+        self.assertEqual(expected, asm64._assembly_output )
+
+
+    def test_set_base_address(self):
+
+        asm64.set_base_address(0xD000)
+
+        self.assertEqual(asm64._base_address, 0xD000)
+
+
     # INTEGRATION
 
     def test_assembler_output_BORDER(self):
