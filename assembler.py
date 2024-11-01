@@ -12,9 +12,8 @@ import assembly_parser
 class Assembler:
 
     # Modes
-    MODE_PRE_PROCESS = 0
-    MODE_PRESCAN = 1
-    MODE_ASSEMBLE = 2
+    MODE_PRESCAN = 0
+    MODE_ASSEMBLE = 1
 
     # Constructor (of sorts)
     def __init__(self):
@@ -101,7 +100,9 @@ class Assembler:
 
     # Parse label references, i.e. where variables / labels are used as operands like JMP foo
     def parse_label_reference( self, match, mode ):
-                        
+
+        loggy.log(loggy.LOG_DIAGNOSTIC, 'Label store = ' + str(self._labels))
+
         # Store original declaration, in the case of < and > modifiers this is useful
         orig_label = match
 
@@ -129,6 +130,13 @@ class Assembler:
                 # so we can derive addressing mode and instruction length
                 if ( self._parser.is_high_low_byte_extract(orig_label) ):
                     match = "#$00"
+                else:
+                    # Otherwise let's assume that if this reference is not yet defined then it isn't
+                    # a variable, and so must be a label so treat as an address
+                    match = "$" + '{:04x}'.format(self._address)
+
+                loggy.log( loggy.LOG_DIAGNOSTIC, "Label not yet defined in first parse, so placeholder for now " + match )
+
             elif ( mode == self.MODE_ASSEMBLE ):
                 loggy.log( loggy.LOG_ERROR, "Unresolved label/variable reference: " + match )
                 exit(1)
@@ -227,8 +235,6 @@ class Assembler:
 
     def parse_include_directive(self, matches, idx ):
 
-        loggy.log( loggy.LOG_WARN, "Include function unreliable")
-
         include_idx = idx
 
         idx = idx + 1
@@ -325,7 +331,34 @@ class Assembler:
             loggy.log( loggy.LOG_ERROR, "[!] Invalid instruction length " + str(instruction_length))
             exit(1)
 
-    
+
+    def preassemble( self, matches ):        
+
+        idx = 0
+
+        while idx < len(matches):
+
+            match = matches[idx]
+
+            if ( self._parser.is_org_directive( match ) ):
+                
+                loggy.log(loggy.LOG_DIAGNOSTIC, "Identified an .org directive on first pass" )
+
+                # parse the address token
+                idx = self.parse_org_directive( matches, idx )
+
+            elif ( self._parser.is_include_directive( match ) ):
+                
+                loggy.log(loggy.LOG_DIAGNOSTIC, "Identified an .include directive on first pass" )
+
+                # parse the address token
+                idx = self.parse_include_directive( matches, idx )
+
+                loggy.log( loggy.LOG_DIAGNOSTIC, "Post include matches - " + str(matches) )
+
+            idx = idx + 1
+
+
     #################################################
     # Main loop for assembler!
     #################################################
@@ -352,7 +385,7 @@ class Assembler:
 
             if ( self._instruction_set.isInstruction(match) ):
 
-                loggy.log( loggy.LOG_DIAGNOSTIC, "INSTRUCTION: " + match )
+                loggy.log( loggy.LOG_DIAGNOSTIC, "INSTRUCTION: " + match + " at 0x" + '{:02x}'.format(self._address) )
 
                 # Obtain the current instruction
                 current_instruction = self._instruction_set.getInstruction( match )
@@ -461,27 +494,9 @@ class Assembler:
                     match = matches[idx]
                     
                     self.parse_variable_declaration( variable_name, match )
-                    
-            elif ( self._parser.is_org_directive( match ) ):
-                
-                if ( mode == self.MODE_PRESCAN ):
-                    
-                    loggy.log(loggy.LOG_DIAGNOSTIC, "Identified an .org directive on first pass" )
-
-                    # parse the address token
-                    idx = self.parse_org_directive( matches, idx )
-
-            elif ( self._parser.is_include_directive( match ) ):
-                
-                if ( mode == self.MODE_PRE_PROCESS ):
-                    
-                    loggy.log(loggy.LOG_DIAGNOSTIC, "Identified an .include directive on first pass" )
-
-                    # parse the address token
-                    idx = self.parse_include_directive( matches, idx )
 
             else:
-                loggy.log(loggy.LOG_DIAGNOSTIC, "Unhandled token " + match )
+                loggy.log(loggy.LOG_DIAGNOSTIC, "Not processing token " + match )
 
             idx = idx + 1
 
@@ -501,7 +516,7 @@ class Assembler:
         matches = self._parser.parse(source)
 
         loggy.log ( loggy.LOG_INFO, "*** Pre-process ***")
-        assembly_output = self.assemble( matches, self.MODE_PRE_PROCESS )
+        assembly_output = self.preassemble( matches )
 
         loggy.log ( loggy.LOG_INFO, "*** Labels and variables ***")
         assembly_output = self.assemble( matches, self.MODE_PRESCAN )

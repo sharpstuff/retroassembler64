@@ -1,4 +1,4 @@
-.org $c000
+    .org $c000
     JMP go
     .include    "asm/included.asm"
 
