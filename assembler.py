@@ -78,6 +78,7 @@ class Assembler:
         self._assembly_line = self._assembly_line + current_instruction["operator"]
         self._machine_code_line = self._machine_code_line + '{:02x}'.format(opcode) + "       "
 
+
     # Parse label declaration, i.e. 'foo:' preceding a line with an instruction on it
     def parse_label_declaration( self, label_name ):
         if ( label_name in self._labels.keys() ):

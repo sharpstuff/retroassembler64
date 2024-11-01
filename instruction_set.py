@@ -17,8 +17,11 @@ class InstructionSet:
     addressing_mode_Relative = 12
 
     def __init__(self):
-            # Initialize the dictionary property
-            self._instructions = {}
+        # Initialize
+        self.initialise()
+
+    def initialise(self):
+        self._instructions = {}
 
     def addInstruction( self, operator, description ):
         if ( operator in self._instructions ):
@@ -45,23 +48,25 @@ class InstructionSet:
 
 
     # Get instruction
-    def getInstruction( self, operator ):
-        if ( operator in self._instructions ):
-            return self._instructions[operator]
+    def getInstruction( self, instruction ):
+        if ( instruction in self._instructions ):
+            return self._instructions[instruction]
         else:
             return None
 
     
     # Add opcode to the language
-    def addOpcode( self, operator, addressing_mode, opcode ):
+    def addOpcode( self, instruction, addressing_mode, opcode ):
         
-        if ( operator in self._instructions ):
-            instruction = self._instructions[ operator ]
+        if ( instruction in self._instructions ):
+            instruction = self._instructions[ instruction ]
             
             if ( addressing_mode in instruction["addressing_modes"] ):
-                print ( "Duplicate addressing mode " + operator )
+                loggy.log ( loggy.LOG_ERROR,  "Duplicate addressing mode " + instruction )
+                return False
             else:
                 instruction["addressing_modes"][addressing_mode] = opcode
+                return True
 
 
     def get_instruction_length(self, addressing_mode):

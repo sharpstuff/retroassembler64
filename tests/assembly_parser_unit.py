@@ -26,6 +26,7 @@ class Parse6510Tests( unittest.TestCase ):
             else:
                 self.assertFalse(val)
 
+
     def test_parse6510_matches_addressing_mode_absolute(self):
 
         for am in range(1,12):
@@ -94,7 +95,6 @@ class Parse6510Tests( unittest.TestCase ):
     def test_parse6510_matches_addressing_mode_relative(self):
         val = parser.matches_addressing_mode("$20", 12 )
         self.assertTrue(val, True)
-
 
 
     # PARSING OPERANDS
