@@ -18,12 +18,15 @@ class Assembler:
     # Constructor (of sorts)
     def __init__(self):
 
+        self._working_directory = os.getcwd()
+
         self._instruction_set = instruction_set.InstructionSet()
         self._instruction_set.loadInstructions()
 
         self._parser = assembly_parser.AssemblyParser()
 
         self.reset()
+
 
     # reset the assembler
     def reset(self):
@@ -67,6 +70,13 @@ class Assembler:
             offset = (256 + offset)  # Convert to two's complement for negative values
 
         return offset
+
+    # Set the working directory of the input file
+    def set_working_directory( self, directory ):
+        
+        self._working_directory = directory
+
+        loggy.log( loggy.LOG_DIAGNOSTIC, "Setting working directory - " + directory )
 
 
     # Parse implied instructions with no operands, i.e. RTS, BRK, INX etc.
@@ -243,11 +253,13 @@ class Assembler:
 
         filename = match.replace("\"","")
 
-        loggy.log(loggy.LOG_DIAGNOSTIC, ".include " + filename)
+        fullpath = os.path.join( self._working_directory, filename )
 
-        if ( os.path.isfile(filename) ):
+        loggy.log( loggy.LOG_DIAGNOSTIC, "Including " + fullpath + "("+filename+")" )
 
-            with open(filename, "r") as source_file:
+        if ( os.path.isfile(fullpath) ):
+
+            with open(fullpath, "r") as source_file:
                 source = source_file.read()
 
                 # parse the file
@@ -276,6 +288,9 @@ class Assembler:
                 for match in include_matches:
                     matches[include_idx] = match
                     include_idx = include_idx + 1
+        else:
+            loggy.log( loggy.LOG_ERROR, "Unable to load include file: " + fullpath)
+            exit()
 
         return idx
 
@@ -358,6 +373,23 @@ class Assembler:
                 loggy.log( loggy.LOG_DIAGNOSTIC, "Post include matches - " + str(matches) )
 
             idx = idx + 1
+
+
+    def load_source(self, filename):
+
+        source = None
+
+        if ( os.path.isfile(filename) ):
+
+            with open(filename, "r") as source_file:
+                self.set_working_directory(os.path.dirname(os.path.abspath(filename)))
+                source = source_file.read()
+        else:
+            loggy.log( loggy.LOG_ERROR, "Unable to load include file: " + filename)
+            exit()
+
+
+        return source
 
 
     #################################################

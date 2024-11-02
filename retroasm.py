@@ -63,14 +63,12 @@ def start( ):
         write_enabled = False
 
     # input file
-    if ( os.path.isfile(args.filename) ):
+    source = asm64.load_source(args.filename)
 
-        with open(args.filename, "r") as source_file:
-            source = source_file.read()
+    if ( source != None ):
+        assembly_output = asm64.run(source, base_address)
 
-            assembly_output = asm64.run(source, base_address)
-
-            loggy.log ( loggy.LOG_INFO, "Writing to " + output_filename )
-            write_binary_output( assembly_output, output_filename )
+        loggy.log ( loggy.LOG_INFO, "Writing to " + output_filename )
+        write_binary_output( assembly_output, output_filename )
 
 start()
