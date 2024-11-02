@@ -14,6 +14,10 @@ fi
 if [ -f $FILE ]; then
 	../Vice/tools/c1541 \
 		-attach $OUTPUT \
+		-delete $FILE
+
+	../Vice/tools/c1541 \
+		-attach $OUTPUT \
 		-write $FILE
 else
 	echo "$FILE does not exist"
