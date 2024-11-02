@@ -388,7 +388,6 @@ class Assembler:
             loggy.log( loggy.LOG_ERROR, "Unable to load include file: " + filename)
             exit()
 
-
         return source
 
 

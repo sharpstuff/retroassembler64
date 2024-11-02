@@ -90,6 +90,19 @@ class AssemblerTests( unittest.TestCase ):
         self.assertEqual(asm64._base_address, 0xD000)
 
 
+    def test_parse_include_directive(self):
+        # this sets the working directory
+        asm64.set_working_directory( os.path.dirname(os.path.abspath("fixtures/included.asm")) )
+
+        matches = ['RTS', '.include', '\"included.asm\"', 'RTS']
+
+        idx = asm64.parse_include_directive(matches, 1)
+
+        expected = ['RTS', 'inc:', 'LDA', '#$65', 'RTS', 'RTS']
+
+        self.assertEqual(matches,expected)
+
+
     def test_parse_relative_address(self):
 
         val = asm64.parse_relative_address( "$C010", 0xC000, asm64.MODE_ASSEMBLE )
@@ -150,6 +163,15 @@ class AssemblerTests( unittest.TestCase ):
         asm64.set_base_address(0xD000)
 
         self.assertEqual(asm64._base_address, 0xD000)
+
+
+    def test_load_source(self):
+
+        source = asm64.load_source("fixtures/src.asm")
+
+        expected = "inc:\n    LDA #$65\n    RTS"
+
+        self.assertEqual(source,expected)
 
 
     # INTEGRATION
