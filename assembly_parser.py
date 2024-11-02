@@ -8,9 +8,9 @@ class AssemblyParser:
     ASM_REGEX_WORDSTRING_DECL = "\.word\s?"
     ASM_REGEX_STRING_DECL = "\.string\s?"
     ASM_REGEX_INCLUDE_DECL = "\.include\s?"
-    ASM_REGEX_VAR_DECL = "[a-zA-Z0-9]{1,20}\s*=\s*"
-    ASM_REGEX_LABEL_DECL = "[a-zA-Z0-9]{1,20}:"
-    ASM_REGEX_LABEL = "[<>]?[a-zA-Z0-9]{1,20}"
+    ASM_REGEX_VAR_DECL = "[a-zA-Z0-9_]{1,20}\s*=\s*"
+    ASM_REGEX_LABEL_DECL = "[a-zA-Z0-9_]{1,20}:"
+    ASM_REGEX_LABEL = "[<>]?[a-zA-Z0-9_]{1,20}"
     ASM_REGEX_INSTRUCTION = "[a-zA-Z]{3}"
     ASM_REGEX_IMMEDIATE = "\#\$[0-9a-fA-F]{2}"
     ASM_REGEX_ABSOLUTE_X = "\$[0-9a-fA-F]{4},[X]"
@@ -25,6 +25,7 @@ class AssemblyParser:
     ASM_REGEX_RELATIVE = "\$[0-9a-fA-F]{2}"
     ASM_REGEX_ACCUMULATOR = "[A]"
     ASM_REGEX_STRING = "\".*\""
+    ASM_REGEX_COMMENT = ";.*"
 
     ASM_REGEX_BYTESTRING = "\$\b[0-9A-F]{2}\b(\s*,\s*\$[0-9A-F]{2})*"
     ASM_REGEX_HEX8_DIGITS = "\$[0-9a-fA-F]{2}"
@@ -32,10 +33,10 @@ class AssemblyParser:
     
 
     # Use these for matching tokens that are already split
-    ASM_REGEX_LABEL_DECL_TOKEN = "[a-zA-Z0-9]{1,20}:$"
-    ASM_REGEX_LABEL_TOKEN = "^[<>]?[a-zA-Z0-9]{1,20}$"
-    ASM_REGEX_VARIABLE_DECL_TOKEN = "^[<>]?[a-zA-Z0-9]{1,20}"
-    ASM_REGEX_VARIABLE_TOKEN = "^[<>]?[a-zA-Z0-9]{1,20}$"
+    ASM_REGEX_LABEL_DECL_TOKEN = "[a-zA-Z0-9_]{1,20}:$"
+    ASM_REGEX_LABEL_TOKEN = "^[<>]?[a-zA-Z0-9_]{1,20}$"
+    ASM_REGEX_VARIABLE_DECL_TOKEN = "^[<>]?[a-zA-Z0-9_]{1,20}"
+    ASM_REGEX_VARIABLE_TOKEN = "^[<>]?[a-zA-Z0-9_]{1,20}$"
 
     def __init__(self):
         # Language Patterns
@@ -61,7 +62,8 @@ class AssemblyParser:
             self.ASM_REGEX_INDEXED_INDIRECT_X,
             self.ASM_REGEX_RELATIVE,
             self.ASM_REGEX_ACCUMULATOR,
-            self.ASM_REGEX_STRING
+            self.ASM_REGEX_STRING,
+            self.ASM_REGEX_COMMENT
         ]
 
         # Note: Order has to mirror the addressing_mode constants in mnemonics6510.py
