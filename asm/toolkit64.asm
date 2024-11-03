@@ -17,16 +17,17 @@ ACE_CHAR = #$41
 
 ; User
 
-    LDA <STR
+    LDA <HW
     STA P_STRING_L
-    LDA >STR
+    LDA >HW
     STA P_STRING_H
     JSR print_string
 
     RTS
 
 
-STR:    .string "Hello world"
+HW: 
+    .string "Hello world"
 
 print_string:
 
@@ -35,8 +36,8 @@ print_string:
     LDA >TEXT_MEM_START
     STA $FE
 
-    LDA #ACE_CHAR        ; What we are storing with STA
-    LDY #$00             ; Needs to stay at zero
+    LDA (P_STRING_L),Y    ; What we are storing with STA
+    LDY #$00                   ; Needs to stay at zero
 ps_clr:
     LDX $FE
     CPX >TEXT_MEM_END

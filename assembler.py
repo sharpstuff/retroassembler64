@@ -112,8 +112,6 @@ class Assembler:
     # Parse label references, i.e. where variables / labels are used as operands like JMP foo
     def parse_label_reference( self, match, mode ):
 
-        loggy.log(loggy.LOG_DIAGNOSTIC, 'Label store = ' + str(self._labels))
-
         # Store original declaration, in the case of < and > modifiers this is useful
         orig_label = match
 
@@ -229,15 +227,21 @@ class Assembler:
         match = matches[idx]
 
         loggy.log( loggy.LOG_DIAGNOSTIC, "Parsing string " + match )
+
         str = match.replace("\"","")
 
         for char in str:
-            b = ord(char)
-            self._assembly_output.append(b)
-            self._machine_code_line = self._machine_code_line + '{:02x}'.format(b) + " "
+            if ( mode == self.MODE_ASSEMBLE):
+                b = ord(char)
+                self._assembly_output.append(b)
+                self._machine_code_line = self._machine_code_line + '{:02x}'.format(b) + " "
+            self._address = self._address + 1
         
+        if ( mode == self.MODE_ASSEMBLE):
+            self._assembly_output.append(0)
+
         self._machine_code_line = self._machine_code_line + '{:02x}'.format(0) + " "
-        self._assembly_output.append(0)
+        self._address = self._address + 1
         
         self._assembly_line = self._assembly_line + match + " "
 
